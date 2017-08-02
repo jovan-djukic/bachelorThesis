@@ -56,7 +56,7 @@ package replacementAlgorithmVerification;
     endfunction : new
 
     virtual task body();
-      repeat(2) begin
+      repeat(50) begin
         req = ReplacementAlgorithmSequenceItem#(NUMBER_OF_CACHE_LINES)::type_id::create("request");
         wait_for_grant();
         req.myRandomize();
@@ -107,7 +107,7 @@ package replacementAlgorithmVerification;
     virtual task drive();
       //print packet
       $display("Driver::packet created");
-      req.print();
+      //req.print();
 
       replacementAlgorithmInterface.lastAccessedCacheLine = req.lastAccessedCacheLine;
       replacementAlgorithmInterface.enable = 1;

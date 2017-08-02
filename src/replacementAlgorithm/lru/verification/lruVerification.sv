@@ -45,7 +45,7 @@ package lruVerification;
 
     virtual function void check();
       $display("Scoreboard:: packet received");
-      transaction.print();
+      //transaction.print();
       
       //adjust counters
       for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
