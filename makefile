@@ -6,15 +6,38 @@ INCLUDES = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm.sv
 COMMAND  = $(VLOG) $(FLAGS) $(INCLUDES)
 
 #Replacement algorithm implementation
-REPLACEMENT_ALGORITHM_IMPLEMENTATION  = $(SRC)/replacementAlgorithm/replacementAlgorithmInterface.sv
-REPLACEMENT_ALGORITHM_VERIFICATION    = $(REPLACEMENT_ALGORITHM_BASE) $(SRC)/replacementAlgorithm/verification/replacementAlgorithmVerification.sv 
+REPLACEMENT_ALGORITHM_SOURCE_DIRECTORY	= $(SRC)/replacementAlgorithm
+REPLACEMENT_ALGORITHM_IMPLEMENTATION  	= $(REPLACEMENT_ALGORITHM_SOURCE_DIRECTORY)/replacementAlgorithmInterface.sv
+REPLACEMENT_ALGORITHM_VERIFICATION    	= $(REPLACEMENT_ALGORITHM_BASE) $(REPLACEMENT_ALGORITHM_SOURCE_DIRECTORY)/verification/replacementAlgorithmVerification.sv 
 
 #lru
-LRU_IMPLEMENTATION  = $(REPLACEMENT_ALGORITHM_IMPLEMENTATION) $(SRC)/replacementAlgorithm/lru/implementation/lru.sv
-LRU_VERIFICATION    = $(REPLACEMENT_ALGORITHM_VERIFICATION) $(SRC)/replacementAlgorithm/lru/verification/lruVerification.sv $(SRC)/replacementAlgorithm/lru/verification/TestBench.sv
+LRU_SOURCE_DIRECTORY	= $(REPLACEMENT_ALGORITHM_SOURCE_DIRECTORY)/lru
+LRU_IMPLEMENTATION  	= $(REPLACEMENT_ALGORITHM_IMPLEMENTATION) $(LRU_SOURCE_DIRECTORY)/implementation/lru.sv
+LRU_VERIFICATION    	= $(REPLACEMENT_ALGORITHM_VERIFICATION) \
+												$(LRU_IMPLEMENTATION) \
+											 	$(LRU_SOURCE_DIRECTORY)/verification/lruVerification.sv \
+												$(LRU_SOURCE_DIRECTORY)/verification/TestBench.sv
 
 lru_implementation	: $(LRU_IMPLEMENTATION)
 	$(COMMAND) $(LRU_IMPLEMENTATION)
 
 lru_verification		: $(LRU_VERIFICATION)
 	$(COMMAND) $(LRU_VERIFICATION)
+
+#memory
+MEMORY_SOURCE_DIRECTORY	= $(SRC)/memory
+MEMORY_IMPLEMENTATION 	= $(MEMORY_SOURCE_DIRECTORY)/memoryInterface.sv 
+
+memory_implementation : $(MEMORY_IMPLEMENTATION)
+	$(COMMAND) $(MEMORY_IMPLEMENTATION)
+
+#ram
+RAM_SOURCE_DIRECTORY	=	$(MEMORY_SOURCE_DIRECTORY)/ram
+RAM_IMPLEMENTATION		= $(MEMORY_IMPLEMENTATION) $(RAM_SOURCE_DIRECTORY)/implementation/ram.sv 
+RAM_VERIFICATION			=	$(RAM_IMPLEMENTATION) $(RAM_SOURCE_DIRECTORY)/verification/*.sv
+
+ram_implementation : $(RAM_IMPLEMENTATION)
+	$(COMMAND) $(RAM_IMPLEMENTATION)
+	
+ram_verification : $(RAM_VERIFICATION)
+	$(COMMAND) $(RAM_VERIFICATION)
