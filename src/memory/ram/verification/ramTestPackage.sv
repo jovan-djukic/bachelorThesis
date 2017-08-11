@@ -3,10 +3,12 @@ package ramTestPackage;
 	import ramAgentPackage::*;
 	`include "uvm_macros.svh"
 
-	parameter ADDRESS_WIDTH		= 16;
-	parameter DATA_WIDTH			= 8;
-	parameter SIZE						= 1024;
-	parameter SEQUENCE_COUNT	= 400;
+	parameter ADDRESS_WIDTH			= 16;
+	parameter DATA_WIDTH				= 8;
+	parameter NUMBER_OF_BLOCKS	= 128;
+	parameter WORDS_PER_BLOCK		= 8;
+	parameter SIZE							= NUMBER_OF_BLOCKS * WORDS_PER_BLOCK;
+	parameter SEQUENCE_COUNT		= 400;
 
 	//Scoreboard
 	class MemoryScoreboard extends uvm_scoreboard;

@@ -11,7 +11,10 @@ module TestBench();
 		.clock(clock)
 	);
 
-	RAM#(SIZE) ram(
+	RAM#(
+		.NUMBER_OF_BLOCKS(NUMBER_OF_BLOCKS),
+		.WORDS_PER_BLOCK(WORDS_PER_BLOCK)
+	) ram(
 		.memoryInterface(memoryInterface)
 	);
 
