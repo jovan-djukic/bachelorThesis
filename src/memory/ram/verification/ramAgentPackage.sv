@@ -139,6 +139,7 @@ package ramAgentPackage;
 																																									type_id::create("MemoryResetSequence");	
 			MemoryWriteReadSequence#(ADDRESS_WIDTH, DATA_WIDTH, SIZE, SEQUENCE_COUNT) memoryWriteReadSequence = MemoryWriteReadSequence#(ADDRESS_WIDTH, DATA_WIDTH, SIZE, SEQUENCE_COUNT)::type_id::create("MemoryWriteReadSequence");
 
+			`uvm_info("SEQUENCE::", "SEQUENCE STARTING", UVM_LOW)
 			memoryResetSequence.start(.sequencer(sequencer), .parent_sequence(this));
 			memoryWriteReadSequence.start(.sequencer(sequencer), .parent_sequence(this));
 		endtask : body
@@ -169,6 +170,7 @@ package ramAgentPackage;
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
+			repeat(4) @(posedge memoryInterface.clock);
 			forever begin
 				seq_item_port.get_next_item(req);
 				drive();
@@ -180,21 +182,25 @@ package ramAgentPackage;
 			memoryInterface.address = req.address;
 
 			if (req.isRead == 1) begin
-				memoryInterface.readEnabled = 1;
+				memoryInterface.readEnabled <= 1;
 			end else begin
-				memoryInterface.writeEnabled = 1;
-				memoryInterface.dataOut 	 = req.data;
+				memoryInterface.writeEnabled <= 1;
+				memoryInterface.dataOut 	 <= req.data;
 			end
 
-			repeat(2) begin
-				@(posedge memoryInterface.clock);	
+			while (memoryInterface.functionComplete != 1) begin
+				@(posedge memoryInterface.clock);
 			end
 
 			if (req.isRead == 1) begin
-				memoryInterface.readEnabled = 0;
-				req.data										= memoryInterface.dataIn;
+				memoryInterface.readEnabled <= 0;
+				req.data										<= memoryInterface.dataIn;
 			end else begin
-				memoryInterface.writeEnabled = 0;
+				memoryInterface.writeEnabled <= 0;
+			end
+
+			while (memoryInterface.functionComplete != 0) begin
+				@(posedge memoryInterface.clock);
 			end
 		endtask : drive;
 	endclass : MemoryDriver
@@ -229,10 +235,11 @@ package ramAgentPackage;
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
+			repeat(4) @(posedge memoryInterface.clock);
 			forever begin
-				repeat (2) begin
+				while (memoryInterface.functionComplete != 1) begin
 					@(posedge memoryInterface.clock);
-				end		
+				end
 
 				memoryTransaction.address = memoryInterface.address;
 				if (memoryInterface.readEnabled == 1) begin
@@ -244,6 +251,10 @@ package ramAgentPackage;
 				end
 
 				analysisPort.write(memoryTransaction);
+
+				while (memoryInterface.functionComplete != 0) begin
+					@(posedge memoryInterface.clock);
+				end
 			end	
 		endtask : run_phase
 

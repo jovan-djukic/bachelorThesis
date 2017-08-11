@@ -8,7 +8,7 @@ package ramTestPackage;
 	parameter NUMBER_OF_BLOCKS	= 128;
 	parameter WORDS_PER_BLOCK		= 8;
 	parameter SIZE							= NUMBER_OF_BLOCKS * WORDS_PER_BLOCK;
-	parameter SEQUENCE_COUNT		= 400;
+	parameter SEQUENCE_COUNT		= 1000;
 
 	//Scoreboard
 	class MemoryScoreboard extends uvm_scoreboard;

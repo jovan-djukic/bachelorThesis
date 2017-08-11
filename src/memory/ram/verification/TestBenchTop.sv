@@ -13,7 +13,8 @@ module TestBench();
 
 	RAM#(
 		.NUMBER_OF_BLOCKS(NUMBER_OF_BLOCKS),
-		.WORDS_PER_BLOCK(WORDS_PER_BLOCK)
+		.WORDS_PER_BLOCK(WORDS_PER_BLOCK),
+		.DELAY(4)
 	) ram(
 		.memoryInterface(memoryInterface)
 	);

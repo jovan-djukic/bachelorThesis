@@ -4,15 +4,15 @@ interface MemoryInterface #(
 )(input logic clock);
 	logic	[ADDRESS_WITDH - 1 : 0] address;
 	logic [DATA_WIDTH - 1		 : 0] dataIn, dataOut;
-	logic 												writeEnabled, readEnabled;
+	logic 												writeEnabled, readEnabled, functionComplete;
 
 	modport master(
-		input 	dataIn, clock,
+		input 	dataIn, clock, functionComplete,
 		output 	address, dataOut, writeEnabled, readEnabled
 	);
 
 	modport slave(
 		input 	dataOut, address, writeEnabled, readEnabled, clock,
-		output	dataIn
+		output	dataIn, functionComplete
 	);
 endinterface
