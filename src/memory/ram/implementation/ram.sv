@@ -9,7 +9,8 @@ module RAM#(
 												 DELAY < 8 ? 3 : 4,
 	string	INIT_FILE 	 = ""
 )(
-	MemoryInterface.slave memoryInterface
+	MemoryInterface.slave memoryInterface,
+	input logic clock
 );
 
 	logic [memoryInterface.DATA_WIDTH - 1	: 0] memory[SIZE_IN_WORDS];
@@ -25,7 +26,7 @@ module RAM#(
 
 	assign memoryInterface.functionComplete = counter == 0 ? 1 : 0;
 	
-	always_ff@(posedge memoryInterface.clock) begin
+	always_ff@(posedge clock) begin
 		counter	<= DELAY;
 		if (memoryInterface.address < SIZE_IN_WORDS) begin
 			if (memoryInterface.writeEnabled == 1) begin

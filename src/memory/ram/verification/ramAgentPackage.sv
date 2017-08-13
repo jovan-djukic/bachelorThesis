@@ -155,7 +155,7 @@ package ramAgentPackage;
 		
 		`uvm_component_utils(MemoryDriver#(ADDRESS_WIDTH, DATA_WIDTH, SIZE))
 
-		protected virtual MemoryInterface#(ADDRESS_WIDTH, DATA_WIDTH) memoryInterface;
+		protected virtual TestInterface#(ADDRESS_WIDTH, DATA_WIDTH) testInterface;
 
 		function new(string name = "MemoryDriver", uvm_component parent);
 			super.new(name, parent);
@@ -164,13 +164,13 @@ package ramAgentPackage;
 		function void build_phase(uvm_phase phase);
 			super.build_phase(phase);
 
-			if (!uvm_config_db#(virtual MemoryInterface#(ADDRESS_WIDTH, DATA_WIDTH))::get(this, "", "MemoryInterface", memoryInterface)) begin
+			if (!uvm_config_db#(virtual TestInterface#(ADDRESS_WIDTH, DATA_WIDTH))::get(this, "", "TestInterface", testInterface)) begin
 				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
 			end
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
-			repeat(4) @(posedge memoryInterface.clock);
+			repeat(4) @(posedge testInterface.clock);
 			forever begin
 				seq_item_port.get_next_item(req);
 				drive();
@@ -179,28 +179,28 @@ package ramAgentPackage;
 		endtask : run_phase
 
 		virtual task drive();
-			memoryInterface.address = req.address;
+			testInterface.memoryInterface.address = req.address;
 
 			if (req.isRead == 1) begin
-				memoryInterface.readEnabled <= 1;
+				testInterface.memoryInterface.readEnabled <= 1;
 			end else begin
-				memoryInterface.writeEnabled <= 1;
-				memoryInterface.dataOut 	 <= req.data;
+				testInterface.memoryInterface.writeEnabled <= 1;
+				testInterface.memoryInterface.dataOut 	 	 <= req.data;
 			end
 
-			while (memoryInterface.functionComplete != 1) begin
-				@(posedge memoryInterface.clock);
+			while (testInterface.memoryInterface.functionComplete != 1) begin
+				@(posedge testInterface.clock);
 			end
 
 			if (req.isRead == 1) begin
-				memoryInterface.readEnabled <= 0;
-				req.data										<= memoryInterface.dataIn;
+				testInterface.memoryInterface.readEnabled <= 0;
+				req.data <= testInterface.memoryInterface.dataIn;
 			end else begin
-				memoryInterface.writeEnabled <= 0;
+				testInterface.memoryInterface.writeEnabled <= 0;
 			end
 
-			while (memoryInterface.functionComplete != 0) begin
-				@(posedge memoryInterface.clock);
+			while (testInterface.memoryInterface.functionComplete != 0) begin
+				@(posedge testInterface.clock);
 			end
 		endtask : drive;
 	endclass : MemoryDriver
@@ -217,7 +217,7 @@ package ramAgentPackage;
 		uvm_analysis_port#(MemoryTransaction#(ADDRESS_WIDTH, DATA_WIDTH, SIZE)) analysisPort;
 		MemoryTransaction#(ADDRESS_WIDTH, DATA_WIDTH, SIZE) 										memoryTransaction;
 		
-		virtual MemoryInterface#(ADDRESS_WIDTH, DATA_WIDTH) memoryInterface;
+		virtual TestInterface#(ADDRESS_WIDTH, DATA_WIDTH) testInterface;
 		
 		function new(string name = "MemoryMonitor", uvm_component parent);
 			super.new(name, parent);
@@ -226,7 +226,7 @@ package ramAgentPackage;
 		function void build_phase(uvm_phase phase);
 			super.build_phase(phase);
 
-			if (!uvm_config_db#(virtual MemoryInterface#(ADDRESS_WIDTH, DATA_WIDTH))::get(this, "", "MemoryInterface", memoryInterface)) begin
+			if (!uvm_config_db#(virtual TestInterface#(ADDRESS_WIDTH, DATA_WIDTH))::get(this, "", "TestInterface", testInterface)) begin
 				`uvm_fatal("NO VIRTAUL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
 			end
 	
@@ -235,25 +235,25 @@ package ramAgentPackage;
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
-			repeat(4) @(posedge memoryInterface.clock);
+			repeat(4) @(posedge testInterface.clock);
 			forever begin
-				while (memoryInterface.functionComplete != 1) begin
-					@(posedge memoryInterface.clock);
+				while (testInterface.memoryInterface.functionComplete != 1) begin
+					@(posedge testInterface.clock);
 				end
 
-				memoryTransaction.address = memoryInterface.address;
-				if (memoryInterface.readEnabled == 1) begin
+				memoryTransaction.address = testInterface.memoryInterface.address;
+				if (testInterface.memoryInterface.readEnabled == 1) begin
 					memoryTransaction.isRead = 1;
-					memoryTransaction.data 	 = memoryInterface.dataIn;
+					memoryTransaction.data 	 = testInterface.memoryInterface.dataIn;
 				end else begin
 					memoryTransaction.isRead = 0;
-					memoryTransaction.data	 = memoryInterface.dataOut;
+					memoryTransaction.data	 = testInterface.memoryInterface.dataOut;
 				end
 
 				analysisPort.write(memoryTransaction);
 
-				while (memoryInterface.functionComplete != 0) begin
-					@(posedge memoryInterface.clock);
+				while (testInterface.memoryInterface.functionComplete != 0) begin
+					@(posedge testInterface.clock);
 				end
 			end	
 		endtask : run_phase
