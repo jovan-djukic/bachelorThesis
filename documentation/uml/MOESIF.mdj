@@ -4770,6 +4770,73 @@
 							"autoResize": false,
 							"text": "Transfers with guard !forward are only possible if the cache has the highest priority (that is if the output of the encoder is that caches ID)",
 							"wordWrap": true
+						},
+						{
+							"_type": "UMLTextView",
+							"_id": "AAAAAAFd1zd06tO7CEo=",
+							"_parent": {
+								"$ref": "AAAAAAFd1jBSAINU4Zo="
+							},
+							"visible": true,
+							"enabled": true,
+							"lineColor": "#000000",
+							"fillColor": "#ffffff",
+							"fontColor": "#000000",
+							"font": "Arial;13;0",
+							"showShadow": true,
+							"containerChangeable": false,
+							"containerExtending": false,
+							"left": 532,
+							"top": 2050,
+							"width": 60,
+							"height": 15,
+							"autoResize": false,
+							"wordWrap": true
+						},
+						{
+							"_type": "UMLTextView",
+							"_id": "AAAAAAFd1zeWM9O+1bc=",
+							"_parent": {
+								"$ref": "AAAAAAFd1jBSAINU4Zo="
+							},
+							"visible": true,
+							"enabled": true,
+							"lineColor": "#000000",
+							"fillColor": "#ffffff",
+							"fontColor": "#000000",
+							"font": "Arial;13;0",
+							"showShadow": true,
+							"containerChangeable": false,
+							"containerExtending": false,
+							"left": 626,
+							"top": 1956,
+							"width": 129,
+							"height": 25,
+							"autoResize": false,
+							"wordWrap": true
+						},
+						{
+							"_type": "UMLNoteView",
+							"_id": "AAAAAAFd1zfxK9PD/LI=",
+							"_parent": {
+								"$ref": "AAAAAAFd1jBSAINU4Zo="
+							},
+							"visible": true,
+							"enabled": true,
+							"lineColor": "#000000",
+							"fillColor": "#ffffff",
+							"fontColor": "#000000",
+							"font": "Arial;13;0",
+							"showShadow": true,
+							"containerChangeable": false,
+							"containerExtending": false,
+							"left": 478,
+							"top": 1872,
+							"width": 406,
+							"height": 192,
+							"autoResize": false,
+							"text": "Processor operations:\nRead \nWrite\n\nBusOperations\nBusRead\nBusReadX\nUpgrade\nAcknowledge\n",
+							"wordWrap": true
 						}
 					]
 				}
