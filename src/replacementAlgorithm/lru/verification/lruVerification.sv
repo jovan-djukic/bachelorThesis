@@ -44,24 +44,35 @@ package lruVerification;
 		endtask : run
 
     virtual function void check();
-      $display("Scoreboard:: packet received");
-      //transaction.print();
-      
+			//`uvm_info("SCOREBOARD", "packet received", UVM_LOW)
+			//transaction.print();
+			//`$display("counters before");
+			//`for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
+			//`	$display("COUNTERS[%d] = %d", i, counters[i]);
+			//`end
+
       //adjust counters
       for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
         if (i == transaction.lastAccessedCacheLine) begin
           continue; 
-        end       
-        if (counters[i] < counters[transaction.lastAccessedCacheLine]) begin
+        end else if (counters[i] < counters[transaction.lastAccessedCacheLine]) begin
           counters[i]++;
         end
       end 
+			counters[transaction.lastAccessedCacheLine] = 0;
+
+			//$display("counters after");
+			//for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
+			//	$display("COUNTERS[%d] = %d", i, counters[i]);
+			//end
 
       for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-        if (counters[i] == ~0) begin
+        if (counters[i] == (NUMBER_OF_CACHE_LINES - 1)) begin
           if (i != transaction.replacementCacheLine) begin
             `uvm_info("compare", {"ERROR"}, UVM_LOW);
-          end
+          end else begin
+            `uvm_info("compare", {"OK"}, UVM_LOW);
+					end
           break;
         end
       end

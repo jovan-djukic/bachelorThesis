@@ -3,7 +3,6 @@ package replacementAlgorithmVerification;
   import uvm_pkg::*;
   `include "uvm_macros.svh"
 
-
   //Sequence item definition
   class ReplacementAlgorithmSequenceItem #(
     int NUMBER_OF_CACHE_LINES = 4,
@@ -56,7 +55,7 @@ package replacementAlgorithmVerification;
     endfunction : new
 
     virtual task body();
-      repeat(50) begin
+      repeat(500) begin
         req = ReplacementAlgorithmSequenceItem#(NUMBER_OF_CACHE_LINES)::type_id::create("request");
         wait_for_grant();
         req.myRandomize();
@@ -73,7 +72,7 @@ package replacementAlgorithmVerification;
     int NUMBER_OF_CACHE_LINES = 4
   ) extends uvm_driver#(ReplacementAlgorithmSequenceItem#(NUMBER_OF_CACHE_LINES));
 
-    virtual ReplacementAlgorithm#(NUMBER_OF_CACHE_LINES) replacementAlgorithmInterface;
+    virtual TestInterface#(NUMBER_OF_CACHE_LINES) testInterface;
     
     `uvm_component_utils(ReplacementAlgorithmDriver#(NUMBER_OF_CACHE_LINES))
 
@@ -83,20 +82,16 @@ package replacementAlgorithmVerification;
 
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
-      if (!uvm_config_db#(virtual ReplacementAlgorithm#(NUMBER_OF_CACHE_LINES))::get(this, "", "ReplacementAlgorithm", replacementAlgorithmInterface)) begin
+      if (!uvm_config_db#(virtual TestInterface#(NUMBER_OF_CACHE_LINES))::get(this, "", "TestInterface", testInterface)) begin
         `uvm_fatal("NO VIRTUAL INTERFACE", {"VIRTUAL INTERFACE MUST BE SET FOR: ", get_full_name(), ".vif"});
       end
     endfunction : build_phase
 
-    virtual task reset_phase(uvm_phase phase);
-      phase.raise_objection(this);
-      replacementAlgorithmInterface.reset = 1;
-      #13;
-      replacementAlgorithmInterface.reset = 0;
-      phase.drop_objection(this);
-    endtask : reset_phase
-
     virtual task run_phase(uvm_phase phase);
+			testInterface.replacementAlgorithmInterface.reset = 1;
+			@(posedge testInterface.clock);
+			testInterface.replacementAlgorithmInterface.reset = 0;
+			@(posedge testInterface.clock);
       forever begin
         seq_item_port.get_next_item(req);
         drive();
@@ -105,13 +100,13 @@ package replacementAlgorithmVerification;
     endtask : run_phase
 
     virtual task drive();
-      //print packet
-      $display("Driver::packet created");
-      //req.print();
-
-      replacementAlgorithmInterface.lastAccessedCacheLine = req.lastAccessedCacheLine;
-      replacementAlgorithmInterface.enable = 1;
-      @(posedge replacementAlgorithmInterface.clock);
+      testInterface.replacementAlgorithmInterface.lastAccessedCacheLine <= req.lastAccessedCacheLine;
+      testInterface.replacementAlgorithmInterface.enable <= 1;
+      @(posedge testInterface.clock);
+      @(posedge testInterface.clock);
+			testInterface.replacementAlgorithmInterface.enable = 0;
+			@(posedge testInterface.clock);
+      @(posedge testInterface.clock);
     endtask : drive
   endclass : ReplacementAlgorithmDriver
 
@@ -120,7 +115,7 @@ package replacementAlgorithmVerification;
     int NUMBER_OF_CACHE_LINES = 4
   ) extends uvm_monitor;
     
-    virtual ReplacementAlgorithm#(NUMBER_OF_CACHE_LINES) replacementAlgorithmInterface;
+    virtual TestInterface#(NUMBER_OF_CACHE_LINES) testInterface;
 
     uvm_analysis_port#(ReplacementAlgorithmSequenceItem#(NUMBER_OF_CACHE_LINES)) collectedItemPort;
 
@@ -136,17 +131,22 @@ package replacementAlgorithmVerification;
 
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
-      if (!uvm_config_db#(virtual ReplacementAlgorithm#(NUMBER_OF_CACHE_LINES))::get(this, "", "ReplacementAlgorithm", replacementAlgorithmInterface)) begin
+      if (!uvm_config_db#(virtual TestInterface#(NUMBER_OF_CACHE_LINES))::get(this, "", "TestInterface", testInterface)) begin
         `uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
       end
     endfunction : build_phase
     
     virtual task run_phase(uvm_phase phase);
       forever begin
-        @(posedge replacementAlgorithmInterface.clock);
-        collectedTransaction.lastAccessedCacheLine  = replacementAlgorithmInterface.lastAccessedCacheLine;
-        collectedTransaction.replacementCacheLine   = replacementAlgorithmInterface.replacementCacheLine;
-        collectedItemPort.write(collectedTransaction);
+				if (testInterface.replacementAlgorithmInterface.enable == 1) begin
+					collectedTransaction.lastAccessedCacheLine  = testInterface.replacementAlgorithmInterface.lastAccessedCacheLine;
+					@(posedge testInterface.clock);
+					@(posedge testInterface.clock);
+					collectedTransaction.replacementCacheLine   = testInterface.replacementAlgorithmInterface.replacementCacheLine;
+					collectedItemPort.write(collectedTransaction);
+				end
+				
+				@(posedge testInterface.clock);
       end   
     endtask : run_phase
 

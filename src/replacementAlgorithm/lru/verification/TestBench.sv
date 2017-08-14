@@ -3,17 +3,18 @@ module TestBenchTop;
   import replacementAlgorithmVerification::*;
   import uvm_pkg::*;
 
-  bit clock;
-  always #5 clock = ~clock;
+	TestInterface#(.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)) testInterface();
 
-  ReplacementAlgorithm#(.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)) replacementAlgorithmInterface(.clock(clock));  
+  always #5 testInterface.clock = ~testInterface.clock;
+
     
   LRU lru (
-    .replacementAlgorithm(replacementAlgorithmInterface)
+    .replacementAlgorithmInterface(testInterface.replacementAlgorithmInterface),
+		.clock(testInterface.clock)
   );
 
   initial begin
-    uvm_config_db#(virtual ReplacementAlgorithm#(NUMBER_OF_CACHE_LINES))::set(uvm_root::get(), "*", "ReplacementAlgorithm", replacementAlgorithmInterface);
+    uvm_config_db#(virtual TestInterface#(.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)))::set(uvm_root::get(), "*", "TestInterface", testInterface);
     run_test("LRUTest");
   end
 endmodule
