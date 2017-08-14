@@ -88,9 +88,9 @@ package replacementAlgorithmVerification;
     endfunction : build_phase
 
     virtual task run_phase(uvm_phase phase);
-			testInterface.replacementAlgorithmInterface.reset = 1;
+			testInterface.reset = 1;
 			@(posedge testInterface.clock);
-			testInterface.replacementAlgorithmInterface.reset = 0;
+			testInterface.reset = 0;
 			@(posedge testInterface.clock);
       forever begin
         seq_item_port.get_next_item(req);

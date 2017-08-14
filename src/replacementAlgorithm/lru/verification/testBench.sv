@@ -10,7 +10,8 @@ module TestBenchTop;
     
   LRU lru (
     .replacementAlgorithmInterface(testInterface.replacementAlgorithmInterface),
-		.clock(testInterface.clock)
+		.clock(testInterface.clock),
+		.reset(testInterface.reset)
   );
 
   initial begin

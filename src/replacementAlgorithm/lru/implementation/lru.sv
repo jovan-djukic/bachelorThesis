@@ -1,12 +1,12 @@
 module LRU(
   ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
-	input logic clock
+	input logic clock, reset
 );
 
   logic [replacementAlgorithmInterface.COUNTER_WIDTH - 1 : 0] counters[replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES];
 
-  always_ff @(posedge clock or posedge replacementAlgorithmInterface.reset) begin
-      if (replacementAlgorithmInterface.reset == 1) begin
+  always_ff @(posedge clock, reset) begin
+      if (reset == 1) begin
           for (int i = replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES - 1; i >= 0; i--) begin
             counters[i] <= i;
           end    

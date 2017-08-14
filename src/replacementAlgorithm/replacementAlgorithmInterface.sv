@@ -10,10 +10,10 @@ interface ReplacementAlgorithmInterface #(
 
 	logic [COUNTER_WIDTH - 1 : 0] lastAccessedCacheLine;
 	logic [COUNTER_WIDTH - 1 : 0] replacementCacheLine;
-	logic                         enable, reset;  
+	logic                         enable;  
 
 	modport slave (
-		input lastAccessedCacheLine, enable, reset,
+		input lastAccessedCacheLine, enable,
 		output replacementCacheLine
 	);
 endinterface

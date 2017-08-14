@@ -9,6 +9,6 @@ interface TestInterface#(
 )();
 
 	ReplacementAlgorithmInterface#(.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES), .COUNTER_WIDTH(COUNTER_WIDTH)) replacementAlgorithmInterface();
-	bit clock;
+	bit clock, reset;
 
 endinterface : TestInterface
