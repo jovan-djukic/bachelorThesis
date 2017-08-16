@@ -1,6 +1,6 @@
 module SetAssociativeTagMemory#(
 	type STATE_TYPE = logic[1 : 0],
-	STATE_TYPE INVALID_STATE,
+	STATE_TYPE INVALID_STATE = 0,
 	int SET_ASSOCIATIVITY = 4
 )(
 	TagUnitInterface.slave tagUnitInterface,
@@ -17,7 +17,7 @@ module SetAssociativeTagMemory#(
 	TagUnitInterface#(
 		.STATE_TYPE(STATE_TYPE),
 		.TAG_WIDTH(tagUnitInterface.TAG_WIDTH),
-		.INDEX_WIDTH(INVALID_STATE)
+		.INDEX_WIDTH(tagUnitInterface.INDEX_WIDTH)
 	)	tagUnitInterfaces[NUMBER_OF_SMALL_CACHES]();
 
 	TagUnit#(
@@ -53,7 +53,7 @@ module SetAssociativeTagMemory#(
 		for (int i = 0; i < NUMBER_OF_SMALL_CACHES; i++) begin
 			writeTags[i] = 0;
 		end
-		writeTags[cacheNumberIn] = 1;
+		writeTags[cacheNumberIn] = tagUnitInterface.writeTag;
 	end
 
 	//writeState demultiplexer
@@ -67,7 +67,7 @@ module SetAssociativeTagMemory#(
 		for (int i = 0; i < NUMBER_OF_SMALL_CACHES; i++) begin
 			writeStates[i] = 0;
 		end
-		writeStates[cacheNumberIn] = 1;
+		writeStates[cacheNumberIn] = tagUnitInterface.writeState;
 	end
 
 	//TAG_INPUTS_END
@@ -101,7 +101,7 @@ module SetAssociativeTagMemory#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_OF_SMALL_CACHES; i++) begin
-			if (cacheNumberIn == i) begin
+			if (cacheNumberOut == i) begin
 				tagUnitInterface.tagOut = tagOuts[i];
 			end
 		end
@@ -116,7 +116,7 @@ module SetAssociativeTagMemory#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_OF_SMALL_CACHES; i++) begin
-			if (cacheNumberIn == i) begin
+			if (cacheNumberOut == i) begin
 				tagUnitInterface.stateOut = stateOuts[i];
 			end
 		end
