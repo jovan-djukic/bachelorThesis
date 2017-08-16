@@ -4,19 +4,19 @@ package setAssociativeTagMemoryTestPackage;
 	import setAssociativeTagMemoryEnvironmentPackage::*;
 	import types::*;
 
-	localparam ADDRESS_WIDTH 							 						= 16;
+	localparam ADDRESS_WIDTH 							 						= 32;
 	localparam type STATE_TYPE					   						= State;
 	localparam STATE_SET_LENGTH						 						= 5;
 	localparam STATE_TYPE STATE_SET[STATE_SET_LENGTH] = {SHARED, EXCLUSIVE, FORWARD, MODIFIED, OWNED};
 	localparam STATE_TYPE INVALID_STATE								= INVALID;
-	localparam TAG_WIDTH		 							 						= 4;
-	localparam INDEX_WIDTH	 							 						= 8;
-	localparam SET_ASSOCIATIVITY 					 						= 2;
+	localparam TAG_WIDTH		 							 						= 12;
+	localparam INDEX_WIDTH	 							 						= 12;
+	localparam SET_ASSOCIATIVITY 					 						= 4;
 	localparam ADJUSTED_TAG_WIDTH 				 						= TAG_WIDTH + SET_ASSOCIATIVITY;
 	localparam ADJUSTED_INDEX_WIDTH				 						= INDEX_WIDTH - SET_ASSOCIATIVITY;
-	localparam OFFSET_WIDTH	 							 						= 4;
+	localparam OFFSET_WIDTH	 							 						= 8;
 
-	localparam SEQUENCE_COUNT = 5000; 
+	localparam SEQUENCE_COUNT = 1000; 
 
 
 	class TagAccessTest extends uvm_test;
