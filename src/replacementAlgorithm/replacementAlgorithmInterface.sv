@@ -1,6 +1,7 @@
 interface ReplacementAlgorithmInterface #(
 	parameter NUMBER_OF_CACHE_LINES = 4,
-	parameter COUNTER_WIDTH         = NUMBER_OF_CACHE_LINES <= 4   ? 2 :
+	parameter COUNTER_WIDTH         = NUMBER_OF_CACHE_LINES <= 2   ? 1 :
+																		NUMBER_OF_CACHE_LINES <= 4   ? 2 :
 																		NUMBER_OF_CACHE_LINES <= 8   ? 3 : 
 																		NUMBER_OF_CACHE_LINES <= 16  ? 4 : 
 																		NUMBER_OF_CACHE_LINES <= 32  ? 5 :
@@ -8,12 +9,11 @@ interface ReplacementAlgorithmInterface #(
 																		NUMBER_OF_CACHE_LINES <= 128 ? 7 : 8
 )();
 
-	logic [COUNTER_WIDTH - 1 : 0] lastAccessedCacheLine;
-	logic [COUNTER_WIDTH - 1 : 0] replacementCacheLine;
-	logic                         enable;  
+	logic [COUNTER_WIDTH - 1 : 0] lastAccessedCacheLine, replacementCacheLine;
+	logic                         accessEnable, invalidateEnable;  
 
 	modport slave (
-		input lastAccessedCacheLine, enable,
+		input lastAccessedCacheLine, accessEnable, invalidateEnable,
 		output replacementCacheLine
 	);
 endinterface

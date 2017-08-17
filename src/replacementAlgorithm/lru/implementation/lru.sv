@@ -11,7 +11,7 @@ module LRU(
             counters[i] <= i;
           end    
       end else begin
-          if (replacementAlgorithmInterface.enable == 1) begin
+          if (replacementAlgorithmInterface.accessEnable == 1) begin
               for (int i = 0; i < replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES; i++) begin
                  if (counters[i] < counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
                    counters[i] <= counters[i] + 1;
@@ -19,7 +19,15 @@ module LRU(
               end              
 
               counters[replacementAlgorithmInterface.lastAccessedCacheLine] <= 0;
-          end     
+          end else if (replacementAlgorithmInterface.invalidateEnable == 1) begin
+						for (int i = 0; i < replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES; i++) begin
+							if (counters[i] > counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
+								counters[i] <= counters[i] - 1;
+							end
+
+							counters[replacementAlgorithmInterface.lastAccessedCacheLine] <= replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES - 1;
+						end
+					end    
       end
   end;
 
