@@ -5,9 +5,7 @@ package ramTestPackage;
 
 	parameter ADDRESS_WIDTH			= 16;
 	parameter DATA_WIDTH				= 8;
-	parameter NUMBER_OF_BLOCKS	= 128;
-	parameter WORDS_PER_BLOCK		= 8;
-	parameter SIZE							= NUMBER_OF_BLOCKS * WORDS_PER_BLOCK;
+	parameter SIZE							= 1024;
 	parameter SEQUENCE_COUNT		= 1000;
 
 	//Scoreboard

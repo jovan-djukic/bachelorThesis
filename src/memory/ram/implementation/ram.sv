@@ -1,8 +1,6 @@
 //DATA_WIDTH defines WORD size
 module RAM#(
-	int NUMBER_OF_BLOCKS = 128,
-	int WORDS_PER_BLOCK	 = 8,
-	int SIZE_IN_WORDS		 = NUMBER_OF_BLOCKS * WORDS_PER_BLOCK,
+	int SIZE_IN_WORDS		 = 1024,
 	int DELAY						 = 4,
 	int COUNTER_WIDTH		 = DELAY < 2 ? 1 :
 												 DELAY < 4 ? 2 :
@@ -33,16 +31,12 @@ module RAM#(
 				memory[memoryInterface.address] <= memoryInterface.dataOut;	
 				if (counter != 0) begin
 					counter <= counter - 1;
-				end else begin
-					counter <= 0;
-				end
+				end 			
 			end else if (memoryInterface.readEnabled  == 1) begin
 				memoryInterface.dataIn <= memory[memoryInterface.address];		
 				if (counter != 0) begin
 					counter <= counter - 1;
-				end else begin
-					counter <= 0;
-				end
+				end 
 			end
 		end		
 	end 

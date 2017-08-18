@@ -9,8 +9,7 @@ module TestBench();
 
 
 	RAM#(
-		.NUMBER_OF_BLOCKS(NUMBER_OF_BLOCKS),
-		.WORDS_PER_BLOCK(WORDS_PER_BLOCK),
+		.SIZE_IN_WORDS(SIZE),
 		.DELAY(4)
 	) ram(
 		.memoryInterface(testInterface.memoryInterface),
