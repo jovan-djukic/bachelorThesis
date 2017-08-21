@@ -11,7 +11,8 @@ module TestBench();
 		.INDEX_WIDTH(INDEX_WIDTH)
 	) setAssociativeLRU(
 		.replacementAlgorithmInterface(testInterface.replacementAlgorithmInterface),
-		.indexIn(testInterface.indexIn),
+		.cpuIndexIn(testInterface.cpuIndexIn),
+		.snoopyIndexIn(testInterface.snoopyIndexIn),
 		.clock(testInterface.clock),
 		.reset(testInterface.reset)
 	);

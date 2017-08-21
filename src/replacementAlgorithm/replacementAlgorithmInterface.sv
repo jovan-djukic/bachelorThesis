@@ -9,11 +9,11 @@ interface ReplacementAlgorithmInterface #(
 																		NUMBER_OF_CACHE_LINES <= 128 ? 7 : 8
 )();
 
-	logic [COUNTER_WIDTH - 1 : 0] lastAccessedCacheLine, replacementCacheLine;
+	logic [COUNTER_WIDTH - 1 : 0] lastAccessedCacheLine, invalidatedCacheLine, replacementCacheLine;
 	logic                         accessEnable, invalidateEnable;  
 
 	modport slave (
-		input lastAccessedCacheLine, accessEnable, invalidateEnable,
+		input lastAccessedCacheLine, invalidatedCacheLine, accessEnable, invalidateEnable,
 		output replacementCacheLine
 	);
 endinterface

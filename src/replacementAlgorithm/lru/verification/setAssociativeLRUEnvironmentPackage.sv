@@ -3,21 +3,30 @@ package setAssociativeLRUEnvironmentPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 
+	typedef enum int {
+		ACCESS,
+		INVALIDATE,
+		ACCESS_AND_INVALIDATE	
+	} ACCESS_TYPE;
+
 	class SetAssociativeLRUTransaction#(
 		int INDEX_WIDTH				= 6,
 		int SET_ASSOCIATIVITY	= 2	
 	) extends uvm_sequence_item;
 		
 		//index tells us which set it is, or rather whic lru to use
-		bit[INDEX_WIDTH - 1 : 0] 			 index;
+		bit[INDEX_WIDTH - 1 : 0] 			 cpuIndexIn, snoopyIndexIn;
 		//there are lines per lru as much as there are smaller caches
-		bit[SET_ASSOCIATIVITY - 1 : 0] lastAccessedLine, replacementLine;
-		bit														 isAccess;
+		bit[SET_ASSOCIATIVITY - 1 : 0] lastAccessedCacheLine, invalidatedCacheLine, replacementCacheLine;
+		ACCESS_TYPE                    accessType;
 		
 		`uvm_object_utils_begin(SetAssociativeLRUTransaction#(.INDEX_WIDTH(INDEX_WIDTH), .SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)))
-			`uvm_field_int(index, UVM_ALL_ON)
-			`uvm_field_int(lastAccessedLine, UVM_ALL_ON)
-			`uvm_field_int(isAccess, UVM_ALL_ON)
+			`uvm_field_int(cpuIndexIn, UVM_ALL_ON)
+			`uvm_field_int(snoopyIndexIn, UVM_ALL_ON)
+			`uvm_field_int(lastAccessedCacheLine, UVM_ALL_ON)
+			`uvm_field_int(invalidatedCacheLine, UVM_ALL_ON)
+			`uvm_field_int(replacementCacheLine, UVM_ALL_ON)
+			`uvm_field_enum(ACCESS_TYPE, accessType, UVM_ALL_ON)
 		`uvm_object_utils_end
 
 		function new(string name = "SetAssociativeLRUTransaction");
@@ -25,9 +34,36 @@ package setAssociativeLRUEnvironmentPackage;
 		endfunction : new
 
 		virtual function void myRandomize();
-			index            = $urandom();
-			lastAccessedLine = $urandom();
-			isAccess         = $urandom();
+			case ($urandom_range(2, 0))
+				0: begin
+					accessType = ACCESS;
+				end
+				1: begin
+					accessType = INVALIDATE;
+				end
+				2: begin
+					accessType = ACCESS_AND_INVALIDATE;
+				end
+			endcase
+
+			case (accessType)
+				ACCESS:                begin
+					cpuIndexIn            = $urandom();
+					lastAccessedCacheLine = $urandom();
+				end
+				INVALIDATE:            begin
+					snoopyIndexIn        = $urandom();
+					invalidatedCacheLine = $urandom();
+				end
+				ACCESS_AND_INVALIDATE: begin
+					cpuIndexIn             = $urandom();
+					snoopyIndexIn          = cpuIndexIn;
+					lastAccessedCacheLine  = $urandom();
+					do begin
+						invalidatedCacheLine = $urandom();
+					end while (lastAccessedCacheLine == invalidatedCacheLine);
+				end
+			endcase
 		endfunction : myRandomize
 
 	endclass :SetAssociativeLRUTransaction
@@ -96,19 +132,38 @@ package setAssociativeLRUEnvironmentPackage;
 		endtask : run_phase
 
 		virtual task drive();
-				testInterface.indexIn                                             = req.index;
-				testInterface.replacementAlgorithmInterface.lastAccessedCacheLine = req.lastAccessedLine;
-				testInterface.replacementAlgorithmInterface.accessEnable          = req.isAccess;
-				testInterface.replacementAlgorithmInterface.invalidateEnable      = ~req.isAccess;
+				case (req.accessType)
+					ACCESS:                begin
+						testInterface.cpuIndexIn                                          = req.cpuIndexIn;
+						testInterface.replacementAlgorithmInterface.lastAccessedCacheLine = req.lastAccessedCacheLine;
+						testInterface.replacementAlgorithmInterface.accessEnable          = 1;
+					end
+					INVALIDATE:            begin
+						testInterface.snoopyIndexIn                                       = req.snoopyIndexIn;
+						testInterface.replacementAlgorithmInterface.invalidatedCacheLine  = req.invalidatedCacheLine;
+						testInterface.replacementAlgorithmInterface.invalidateEnable      = 1;
+					end
+					ACCESS_AND_INVALIDATE: begin
+						testInterface.cpuIndexIn                                          = req.cpuIndexIn;
+						testInterface.snoopyIndexIn                                       = req.snoopyIndexIn;
+						testInterface.replacementAlgorithmInterface.lastAccessedCacheLine = req.lastAccessedCacheLine;
+						testInterface.replacementAlgorithmInterface.invalidatedCacheLine  = req.invalidatedCacheLine;
+						testInterface.replacementAlgorithmInterface.accessEnable          = 1;
+						testInterface.replacementAlgorithmInterface.invalidateEnable      = 1;
+					end
+				endcase
 
 				//wait for write to sync in
 				repeat (2) begin
 					@(posedge testInterface.clock);
 				end
-
 				//wait for monitor to collect data
 				@(posedge testInterface.clock);
-
+				//turn off access and invalidate
+				testInterface.replacementAlgorithmInterface.accessEnable     = 0;
+				testInterface.replacementAlgorithmInterface.invalidateEnable = 0;
+			
+				@(posedge testInterface.clock);
 		endtask : drive
 
 	endclass : SetAssociativeLRUDriver
@@ -153,13 +208,33 @@ package setAssociativeLRUEnvironmentPackage;
 				end
 
 				//colect data
-				transaction.lastAccessedLine = testInterface.replacementAlgorithmInterface.lastAccessedCacheLine;
-				transaction.replacementLine  = testInterface.replacementAlgorithmInterface.replacementCacheLine;
-				transaction.index            = testInterface.indexIn;
-				transaction.isAccess         = testInterface.replacementAlgorithmInterface.accessEnable;
+				//case (req.accessType)
+				if (testInterface.replacementAlgorithmInterface.accessEnable == 1 && testInterface.replacementAlgorithmInterface.invalidateEnable == 1) begin
+					//ACCESS_AND_INVALIDATE	
+					transaction.accessType            = ACCESS_AND_INVALIDATE;
+					transaction.cpuIndexIn            = testInterface.cpuIndexIn;
+					transaction.snoopyIndexIn         = testInterface.snoopyIndexIn;
+					transaction.invalidatedCacheLine  = testInterface.replacementAlgorithmInterface.invalidatedCacheLine;
+					transaction.lastAccessedCacheLine = testInterface.replacementAlgorithmInterface.lastAccessedCacheLine;
+					transaction.replacementCacheLine  = testInterface.replacementAlgorithmInterface.replacementCacheLine;
+				end else if (testInterface.replacementAlgorithmInterface.accessEnable == 1) begin
+					//ACCESS
+					transaction.accessType            = ACCESS;
+					transaction.cpuIndexIn            = testInterface.cpuIndexIn;
+					transaction.lastAccessedCacheLine = testInterface.replacementAlgorithmInterface.lastAccessedCacheLine;
+					transaction.replacementCacheLine  = testInterface.replacementAlgorithmInterface.replacementCacheLine;
+				end else begin
+					//INVALIDATE
+					transaction.accessType           = INVALIDATE;
+					transaction.snoopyIndexIn        = testInterface.snoopyIndexIn;
+					transaction.invalidatedCacheLine = testInterface.replacementAlgorithmInterface.invalidatedCacheLine;
+					transaction.replacementCacheLine = testInterface.replacementAlgorithmInterface.replacementCacheLine;
+				end
 
 				//write data
 				analysisPort.write(transaction);
+				@(posedge testInterface.clock);
+				//wait for turning off of access and invalidate
 				@(posedge testInterface.clock);
 			end
 		endtask : run_phase
@@ -202,6 +277,61 @@ package setAssociativeLRUEnvironmentPackage;
 
 	endclass : SetAssociativeLRUAgent
 	
+	//class representing lru algorithm, used for verification
+	class SetAssociativeLRUClassImplementation#(
+		int INDEX_WIDTH       = 4,
+		int SET_ASSOCIATIVITY = 2
+	);
+		
+		localparam NUMBER_OF_LRUS        = 1 << INDEX_WIDTH;
+		localparam NUMBER_OF_CACHE_LINES = 1 << SET_ASSOCIATIVITY;
+
+		int counters[NUMBER_OF_LRUS][NUMBER_OF_CACHE_LINES];
+
+		function new();
+			for (int i = 0; i < NUMBER_OF_LRUS; i++) begin
+				for (int j = 0; j < NUMBER_OF_CACHE_LINES; j++) begin
+					counters[i][j] = j;
+				end
+			end
+		endfunction : new
+
+		function void access(logic[INDEX_WIDTH - 1 : 0] index, logic[SET_ASSOCIATIVITY - 1 : 0] line);
+			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
+				if (counters[index][i] < counters[index][line]) begin
+					counters[index][i]++;
+				end
+			end
+
+			counters[index][line] = 0;
+		endfunction : access
+
+		function void invalidate(logic[INDEX_WIDTH - 1 : 0] index, logic[SET_ASSOCIATIVITY - 1 : 0] line);
+			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
+				if (counters[index][i] > counters[index][line]) begin
+					counters[index][i]--;
+				end
+			end
+
+			counters[index][line] = NUMBER_OF_CACHE_LINES - 1;
+		endfunction : invalidate
+
+		function void accessAndInvalidate(logic[INDEX_WIDTH - 1 : 0] cpuIndex, snoopyIndex, logic[SET_ASSOCIATIVITY - 1 : 0] cpuLine, snoopyLine);
+			this.access(.index(cpuIndex), .line(cpuLine));
+			this.invalidate(.index(snoopyIndex), .line(snoopyLine));
+		endfunction : accessAndInvalidate
+
+		function logic[SET_ASSOCIATIVITY - 1 : 0] getReplacementCacheLine(logic[INDEX_WIDTH - 1 : 0] index);
+			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
+				if (counters[index][i] == (NUMBER_OF_CACHE_LINES - 1)) begin
+					return i;
+				end
+			end	
+		endfunction : getReplacementCacheLine
+
+	endclass : SetAssociativeLRUClassImplementation
+
+	//Scoreboard
 	class SetAssociativeLRUScoreboard#(
 		int INDEX_WIDTH       = 4,
 		int SET_ASSOCIATIVITY = 2
@@ -216,21 +346,17 @@ package setAssociativeLRUEnvironmentPackage;
 		SetAssociativeLRUTransaction#(.INDEX_WIDTH(INDEX_WIDTH), .SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)) transaction;
 
 		//data needed for checking lru
-		localparam NUMBER_OF_CACHE_LINES = 1 << SET_ASSOCIATIVITY;
-		localparam NUMBER_OF_LRUS        = 1 << INDEX_WIDTH;
-
-		logic[SET_ASSOCIATIVITY - 1 : 0] lrus[NUMBER_OF_LRUS][NUMBER_OF_CACHE_LINES];
+		SetAssociativeLRUClassImplementation#(
+			.INDEX_WIDTH(INDEX_WIDTH),
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+		) lruImplementation;
 
 		function new(string name = "SetAssociativeLRUScoreboard", uvm_component parent);
 			super.new(.name(name), .parent(parent));
 
 			transaction = new(.name("transaction"));
 			
-			for (int i = 0; i < NUMBER_OF_LRUS; i++) begin
-				for (int j = 0; j < NUMBER_OF_CACHE_LINES; j++) begin
-					lrus[i][j] = j;
-				end
-			end
+			lruImplementation = new();
 		endfunction : new
 
 		virtual function void build_phase(uvm_phase phase);
@@ -254,37 +380,41 @@ package setAssociativeLRUEnvironmentPackage;
 
 		virtual function void check();
 			//helper variables
-			int index            = transaction.index;
-			int lastAccessedLine = transaction.lastAccessedLine;
-			int replacementLine  = transaction.replacementLine;
-
-			if (transaction.isAccess == 1) begin
-				for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-					if (i != lastAccessedLine && lrus[index][i] < lrus[index][lastAccessedLine]) begin
-						lrus[index][i]++;
-					end		
+			int cpuIndexIn            = transaction.cpuIndexIn;
+			int snoopyIndexIn         = transaction.snoopyIndexIn;
+			int lastAccessedCacheLine = transaction.lastAccessedCacheLine;
+			int invalidatedCacheLine  = transaction.invalidatedCacheLine;
+			int replacementCacheLine  = transaction.replacementCacheLine;
+			ACCESS_TYPE accessType    = transaction.accessType;
+			
+			case (accessType) 
+				ACCESS:                begin
+					lruImplementation.access(
+						.index(cpuIndexIn),
+						.line(lastAccessedCacheLine)
+					);
 				end
-
-				lrus[index][lastAccessedLine] = 0;
-			end else begin
-				for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-					if (i != lastAccessedLine && lrus[index][i] > lrus[index][lastAccessedLine]) begin
-						lrus[index][i]--;
-					end		
+				INVALIDATE:            begin
+					lruImplementation.invalidate(
+						.index(snoopyIndexIn),
+						.line(invalidatedCacheLine)
+					);
 				end
-
-				lrus[index][lastAccessedLine] = NUMBER_OF_CACHE_LINES - 1;
-			end
-
+				ACCESS_AND_INVALIDATE: begin
+					lruImplementation.accessAndInvalidate(
+						.cpuIndex(cpuIndexIn),
+						.snoopyIndex(snoopyIndexIn),
+						.cpuLine(lastAccessedCacheLine),
+						.snoopyLine(invalidatedCacheLine)	
+					);
+				end
+			endcase
+	
 			//find replacement and compare
-			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-				if (lrus[index][i] == (NUMBER_OF_CACHE_LINES - 1)) begin
-					if (i != replacementLine) begin
-						`uvm_info("SCOREBOARD::ERROR", $sformatf("\nINDEX=%d, EXPECTED_LINE=%d, LRU_LINE=%d, IS_ACCESS=%d", index, i, replacementLine, transaction.isAccess), UVM_LOW)
-					end else begin
-						`uvm_info("SCOREBOARD::OK", $sformatf("\nINDEX=%d, EXPECTED_LINE=%d, LRU_LINE=%d, IS_ACCESS=%d", index, i, replacementLine, transaction.isAccess), UVM_LOW)
-					end
-				end 
+			if (lruImplementation.getReplacementCacheLine(cpuIndexIn) != replacementCacheLine) begin
+				`uvm_info("SCOREBOARD::ERROR", $sformatf("\nINDEX=%d, EXPECTED_LINE=%d, LRU_LINE=%d, TYPE=%s", cpuIndexIn, lruImplementation.getReplacementCacheLine(cpuIndexIn), replacementCacheLine, accessType.name()), UVM_LOW)
+			end else begin
+				`uvm_info("SCOREBOARD::OK", $sformatf("\nINDEX=%d, EXPECTED_LINE=%d, LRU_LINE=%d, TYPE=%s", cpuIndexIn, lruImplementation.getReplacementCacheLine(cpuIndexIn), replacementCacheLine, accessType.name()), UVM_LOW)
 			end
 		endfunction : check
 

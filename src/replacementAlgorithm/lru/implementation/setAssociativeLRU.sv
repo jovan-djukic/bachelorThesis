@@ -24,6 +24,7 @@ module SetAssociativeLRU#(
 	generate
 		for (i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
 			assign replacementAlgorithmInterfaces[i].lastAccessedCacheLine = replacementAlgorithmInterface.lastAccessedCacheLine;
+			assign replacementAlgorithmInterfaces[i].invalidatedCacheLine  = replacementAlgorithmInterface.invalidatedCacheLine;
 		end
 	endgenerate
 
@@ -54,7 +55,7 @@ module SetAssociativeLRU#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
-			if (cpuIndexIn == i) begin
+			if (snoopyIndexIn == i) begin
 				invalidateEnables[i] = replacementAlgorithmInterface.invalidateEnable;
 			end else begin
 				invalidateEnables[i] = 0;

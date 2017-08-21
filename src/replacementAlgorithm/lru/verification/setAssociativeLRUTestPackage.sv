@@ -6,7 +6,7 @@ package setAssociativeLRUTestPackage;
 
 	localparam INDEX_WIDTH       = 8;
 	localparam SET_ASSOCIATIVITY = 4;
-	localparam SEQUENCE_COUNT    = 10000;
+	localparam SEQUENCE_COUNT    = 1000;
 
 	class SetAssociativeLRUTest extends uvm_test;
 		
