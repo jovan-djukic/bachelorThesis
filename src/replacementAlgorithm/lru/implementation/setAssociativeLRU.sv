@@ -2,7 +2,7 @@ module SetAssociativeLRU#(
 	int INDEX_WIDTH	=	6
 )(
 	ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
-	input logic[INDEX_WIDTH - 1 : 0] indexIn,
+	input logic[INDEX_WIDTH - 1 : 0] cpuIndexIn, snoopyIndexIn,
 	input logic clock, reset
 );
 
@@ -37,7 +37,7 @@ module SetAssociativeLRU#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
-			if (indexIn == i) begin
+			if (cpuIndexIn == i) begin
 				accessEnables[i] = replacementAlgorithmInterface.accessEnable;
 			end else begin
 				accessEnables[i] = 0;
@@ -54,7 +54,7 @@ module SetAssociativeLRU#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
-			if (indexIn == i) begin
+			if (cpuIndexIn == i) begin
 				invalidateEnables[i] = replacementAlgorithmInterface.invalidateEnable;
 			end else begin
 				invalidateEnables[i] = 0;
@@ -73,7 +73,7 @@ module SetAssociativeLRU#(
 	endgenerate
 	always_comb begin
 		for (int i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
-			if (indexIn == i) begin
+			if (cpuIndexIn == i) begin
 				replacementAlgorithmInterface.replacementCacheLine = replacementCacheLines[i];
 			end
 		end
