@@ -1,5 +1,5 @@
 module SetAssociativeLRU#(
-	int INDEX_WIDTH	=	6
+	int INDEX_WIDTH = 6
 )(
 	ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
 	input logic[INDEX_WIDTH - 1 : 0] cpuIndexIn, snoopyIndexIn,
