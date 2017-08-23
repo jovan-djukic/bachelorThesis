@@ -1,6 +1,6 @@
 module DirectMappingCacheUnit#(
-	int CACHE_NUMBER         = 0,
-	type STATE_TYPE          = logic[1 : 0]
+	int CACHE_NUMBER = 0,
+	type STATE_TYPE  = logic[1 : 0]
 )(
 	CacheInterface.cache cacheInterface,
 	input clock, reset
