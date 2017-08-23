@@ -20,8 +20,8 @@ module SetAssociativeCache#(
 		.INDEX_WIDTH(cacheInterface.INDEX_WIDTH)
 	) setAssociativeLRU(
 		.replacementAlgorithmInterface(replacementAlgorithmInterface),
-		.cpuIndexIn(cache.cpuIndex),
-		.snoopyIndexIn(cache.snoopyIndex),
+		.cpuIndexIn(cacheInterface.cpuIndex),
+		.snoopyIndexIn(cacheInterface.snoopyIndex),
 		.clock(clock),
 		.reset(reset)
 	);
@@ -50,7 +50,7 @@ module SetAssociativeCache#(
 	generate
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			//generate modules
-			DirectMappintCacheUnit#(
+			DirectMappingCacheUnit#(
 				.CACHE_NUMBER(i),
 				.STATE_TYPE(STATE_TYPE)
 			) directMappingCacheUnit(
@@ -60,7 +60,7 @@ module SetAssociativeCache#(
 			);
 			//cpu controller assings
 			assign cacheInterfaces[i].cpuIndex   = cacheInterface.cpuIndex;
-			assign cacheInterfaces[i].spuOffset  = cacheInterface.cpuOffset;
+			assign cacheInterfaces[i].cpuOffset  = cacheInterface.cpuOffset;
 			assign cacheInterfaces[i].cpuTagIn   = cacheInterface.cpuTagIn;
 			assign cacheInterfaces[i].cpuDataIn  = cacheInterface.cpuDataIn;
 			assign cacheInterfaces[i].cpuStateIn = cacheInterface.cpuStateIn;

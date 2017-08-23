@@ -50,11 +50,13 @@ package setAssociativeCacheClassImplementationPackage;
 			tags[cacheNumber][index] = tag;
 		endfunction : writeTag
 
-		virtual function void writeState(logic[INDEX_WIDTH - 1 : 0] index, STATE_TYPE state);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = setAssociativeLRU.getReplacementCacheLine(.index(index));
+		virtual function void writeState(logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = NUMBER_OF_SMALLER_CACHES,  logic[INDEX_WIDTH - 1 : 0] index, STATE_TYPE state);
+			if (cacheNumber == NUMBER_OF_SMALLER_CACHES) begin
+				logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = setAssociativeLRU.getReplacementCacheLine(.index(index));
+			end
 			states[cacheNumber][index] = state;
 		endfunction : writeState
-		
+
 		virtual function void writeData(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag, logic[OFFSET_WIDTH - 1 : 0] offset, logic[DATA_WIDTH - 1 : 0] data);
 			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
 			this.data[cacheNumber][index][offset] = data;
