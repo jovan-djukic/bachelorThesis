@@ -26,11 +26,20 @@ package setAssociativeCacheClassImplementationPackage;
 		function new();
 			setAssociativeLRU = new();	
 			for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
-				for (int j = 0; j < NUMBER_OF_CACHE_LINES; i++) begin
+				for (int j = 0; j < NUMBER_OF_CACHE_LINES; j++) begin
 					states[i][j] = INVALID_STATE;
 				end
 			end
 		endfunction : new
+
+		virtual function logic isHit(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
+			for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
+				if (tags[i][index] == tag && states[i][index] != INVALID_STATE) begin
+					return 1;
+				end
+			end
+			return 0;
+		endfunction : isHit
 
 		virtual function logic[SET_ASSOCIATIVITY - 1 : 0] getCacheNumber(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
 			for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
@@ -38,22 +47,16 @@ package setAssociativeCacheClassImplementationPackage;
 					return i;
 				end
 			end
-			return NUMBER_OF_SMALLER_CACHES;
+			return setAssociativeLRU.getReplacementCacheLine(.index(index));
 		endfunction : getCacheNumber
 
-		virtual function logic isHit(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
-			return this.getCacheNumber(.index(index), .tag(tag)) != NUMBER_OF_SMALLER_CACHES;
-		endfunction : isHit
-
 		virtual function void writeTag(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = setAssociativeLRU.getReplacementCacheLine(.index(index));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag({TAG_WIDTH{1'bx}}));
 			tags[cacheNumber][index] = tag;
 		endfunction : writeTag
 
-		virtual function void writeState(logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = NUMBER_OF_SMALLER_CACHES,  logic[INDEX_WIDTH - 1 : 0] index, STATE_TYPE state);
-			if (cacheNumber == NUMBER_OF_SMALLER_CACHES) begin
-				logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = setAssociativeLRU.getReplacementCacheLine(.index(index));
-			end
+		virtual function void writeState(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag = {TAG_WIDTH{1'bx}}, STATE_TYPE state);
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
 			states[cacheNumber][index] = state;
 		endfunction : writeState
 
