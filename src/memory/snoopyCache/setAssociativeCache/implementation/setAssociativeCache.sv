@@ -27,8 +27,10 @@ module SetAssociativeCache#(
 	);
 
 	//assigns for control signals of replacement algorithm
-	assign replacementAlgorithmInterface.accessEnable     = accessEnable;
-	assign replacementAlgorithmInterface.invalidateEnable = invalidateEnable;
+	assign replacementAlgorithmInterface.accessEnable          = accessEnable;
+	assign replacementAlgorithmInterface.invalidateEnable      = invalidateEnable;
+	assign replacementAlgorithmInterface.lastAccessedCacheLine = cacheInterface.cpuCacheNumber;
+	assign replacementAlgorithmInterface.invalidatedCacheLine  = cacheInterface.snoopyCacheNumber;
 
 	//REPLACEMENT_ALGORITHM_END
 
@@ -124,7 +126,7 @@ module SetAssociativeCache#(
 	//multiplexers for out signals
 	//helper signals 
 	logic[cacheInterface.TAG_WIDTH - 1         : 0] cpuTagOuts[NUMBER_OF_SMALLER_CACHES];
-	logic[cacheInterface.DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES];
+	logic[cacheInterface.DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES], snoopyDataOuts[NUMBER_OF_SMALLER_CACHES];
 	logic[cacheInterface.SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumbers[NUMBER_OF_SMALLER_CACHES], snoopyCacheNumbers[NUMBER_OF_SMALLER_CACHES];
 	STATE_TYPE cpuStateOuts[NUMBER_OF_SMALLER_CACHES], snoopyStateOuts[NUMBER_OF_SMALLER_CACHES];
 
@@ -137,6 +139,7 @@ module SetAssociativeCache#(
 			assign cpuCacheNumbers[i] = cacheInterfaces[i].cpuCacheNumber;
 			
 			//snoopy controller helper singal assigns
+			assign snoopyDataOuts[i]     = cacheInterfaces[i].snoopyDataOut;
 			assign snoopyStateOuts[i]    = cacheInterfaces[i].snoopyStateOut;
 			assign snoopyCacheNumbers[i] = cacheInterfaces[i].snoopyCacheNumber;
 		end
@@ -176,6 +179,7 @@ module SetAssociativeCache#(
 		for (int i = 0; i< NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cacheInterface.snoopyCacheNumber == i) begin
 				cacheInterface.snoopyStateOut = snoopyStateOuts[i];
+				cacheInterface.snoopyDataOut  = snoopyDataOuts[i];
 			end
 		end
 	end
