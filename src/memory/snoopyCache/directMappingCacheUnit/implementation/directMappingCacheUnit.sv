@@ -1,8 +1,8 @@
 module DirectMappingCacheUnit#(
-	type STATE_TYPE  = logic[1 : 0],
-	STATE_TYPE INVALID_STATE = 2'b0
+	int CACHE_NUMBER         = 0,
+	type STATE_TYPE          = logic[1 : 0]
 )(
-	CacheInterface.slave cacheInterface,
+	CacheInterface.cache cacheInterface,
 	input clock, reset
 );
 
@@ -13,21 +13,25 @@ module DirectMappingCacheUnit#(
 	logic[cacheInterface.TAG_WIDTH - 1  : 0] tags[NUMBER_OF_CACHE_LINES];
 	logic[cacheInterface.DATA_WIDTH - 1 : 0] data[NUMBER_OF_CACHE_LINES][NUMBER_OF_WORDS_PER_LINE];
 
+	//cache number assign
+	assign cacheInterface.cpuCacheNumber    = CACHE_NUMBER;
+	assign cacheInterface.snoopyCacheNumber = CACHE_NUMBER;
+
 	//cpu controller assigns
 	assign cacheInterface.cpuTagOut   = tags[cacheInterface.cpuIndex];
 	assign cacheInterface.cpuStateOut = states[cacheInterface.cpuIndex];
-	assign cacheInterface.cpuHit      = cacheInterface.cpuTagOut == cacheInterface.cpuTagIn && cacheInterface.cpuStateOut != INVALID_STATE ? 1 : 0;
+	assign cacheInterface.cpuHit      = cacheInterface.cpuTagOut == cacheInterface.cpuTagIn && cacheInterface.cpuStateOut != cacheInterface.INVALID_STATE ? 1 : 0;
 	assign cacheInterface.cpuDataOut  = data[cacheInterface.cpuIndex][cacheInterface.cpuOffset];
 	
 	//snoopy controller assigns
 	assign cacheInterface.snoopyStateOut = states[cacheInterface.snoopyIndex];
-	assign cacheInterface.snoopyHit      = cacheInterface.snoopyTagIn == tags[cacheInterface.snoopyIndex] && cacheInterface.snoopyStateOut != INVALID_STATE ? 1 : 0;
+	assign cacheInterface.snoopyHit      = cacheInterface.snoopyTagIn == tags[cacheInterface.snoopyIndex] && cacheInterface.snoopyStateOut != cacheInterface.INVALID_STATE ? 1 : 0;
 	assign cacheInterface.snoopyDataOut  = data[cacheInterface.snoopyIndex][cacheInterface.snoopyOffset];
 
 	always_ff @(posedge clock, reset) begin
 		if (reset == 1) begin
 			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-				states[i] <= INVALID_STATE;
+				states[i] <= cacheInterface.INVALID_STATE;
 			end
 		end else begin
 			//cpu controller writes
