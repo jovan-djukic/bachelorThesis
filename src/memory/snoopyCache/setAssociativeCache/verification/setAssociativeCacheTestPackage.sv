@@ -11,16 +11,16 @@ package setAssociativeCacheTestPackage;
 		STATE_3	
 	} State;
 
-	localparam TAG_WIDTH                              = 8;
-	localparam INDEX_WIDTH                            = 4;
+	localparam TAG_WIDTH                              = 9;
+	localparam INDEX_WIDTH                            = 3;
 	localparam OFFSET_WIDTH                           = 4;
-	localparam SET_ASSOCIATIVITY                      = 2;
-	localparam DATA_WIDTH                             = 8;
+	localparam SET_ASSOCIATIVITY                      = 3;
+	localparam DATA_WIDTH                             = 16;
 	localparam type STATE_TYPE                        = State;
 	localparam STATE_SET_LENGTH                       = 3;
 	localparam STATE_TYPE STATE_SET[STATE_SET_LENGTH] = {STATE_1, STATE_2, STATE_3};
 	localparam STATE_TYPE INVALID_STATE               = STATE_0;
-	localparam SEQUENCE_COUNT                         = 10;
+	localparam SEQUENCE_COUNT                         = 1000;
 	 
 	class CacheAccessTest extends uvm_test;
 		`uvm_component_utils(CacheAccessTest)

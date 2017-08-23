@@ -12,7 +12,7 @@ module TestBench();
 		.INVALID_STATE(INVALID_STATE)				
 	) testInterface();
 
-	always testInterface.clock = ~testInterface.clock;
+	always #5 testInterface.clock = ~testInterface.clock;
 
 	SetAssociativeCache#(
 		.STATE_TYPE(STATE_TYPE)

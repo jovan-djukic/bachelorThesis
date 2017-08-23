@@ -411,7 +411,6 @@ package setAssociativeCacheEnvirnomentPackage;
 
 			transaction.snoopyStateOut    = testInterface.cacheInterface.snoopyStateOut;
 			transaction.snoopyCacheNumber = testInterface.cacheInterface.snoopyCacheNumber;
-			analysisPort.write(transaction);
 			//wait for monitor to collect data
 			@(posedge testInterface.clock);
 
@@ -650,12 +649,12 @@ package setAssociativeCacheEnvirnomentPackage;
 			//helper variables
 			int cpuHit = classImplementation.isHit(.index(transaction.cpuIndex), .tag(transaction.cpuTagIn));
 			if (transaction.cpuHit != cpuHit) begin
-				`uvm_info("SCOREBORAD::CPU_HIT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cpuHit, transaction.cpuHit), UVM_LOW);
+				`uvm_info("CPU_HIT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cpuHit, transaction.cpuHit), UVM_LOW);
 			end
 
 			if (transaction.cpuHit == 0) begin
 				classImplementation.writeTag(.index(transaction.cpuIndex), .tag(transaction.cpuTagIn));
-				classImplementation.writeState(.index(transaction.cpuIndex), .state(transaction.cpuStateIn));
+				classImplementation.writeState(.index(transaction.cpuIndex), .tag(transaction.cpuTagIn), .state(transaction.cpuStateIn));
 				classImplementation.writeDataToWholeLine(.index(transaction.cpuIndex), .tag(transaction.cpuTagIn), .data(transaction.cpuDataIn));
 			end
 			classImplementation.access(.index(transaction.cpuIndex), .tag(transaction.cpuTagIn));
@@ -668,22 +667,22 @@ package setAssociativeCacheEnvirnomentPackage;
 				STATE_TYPE											 stateOut     = classImplementation.getState(.cacheNumber(cacheNumber), .index(transaction.cpuIndex));
 				//check if it is in the right cache Number
 				if (transaction.cpuCacheNumber != cacheNumber) begin
-					`uvm_info("SCOREBORAD::CACHE_NUMBER_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cacheNumber, transaction.cpuCacheNumber), UVM_LOW)
+					`uvm_info("CACHE_NUMBER_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cacheNumber, transaction.cpuCacheNumber), UVM_LOW)
 					errorCounter++;
 				end
 				//check if tagOuts match
 				if (transaction.cpuTagOut != tagOut) begin
-					`uvm_info("SCOREBORAD::TAG_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", tagOut, transaction.cpuTagOut), UVM_LOW)
+					`uvm_info("TAG_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", tagOut, transaction.cpuTagOut), UVM_LOW)
 					errorCounter++;
 				end
 				//check if dataOuts match
 				if (transaction.cpuDataOut != dataOut) begin
-					`uvm_info("SCOREBORAD::DATA_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", dataOut, transaction.cpuDataOut), UVM_LOW)
+					`uvm_info("DATA_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", dataOut, transaction.cpuDataOut), UVM_LOW)
 					errorCounter++;
 				end
 				//check if stateOuts match
 				if (transaction.cpuStateOut != stateOut) begin
-					`uvm_info("SCOREBORAD::STATE_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", stateOut, transaction.cpuStateOut), UVM_LOW)
+					`uvm_info("STATE_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", stateOut, transaction.cpuStateOut), UVM_LOW)
 					errorCounter++;
 				end
 			end
@@ -691,37 +690,43 @@ package setAssociativeCacheEnvirnomentPackage;
 			begin
 				logic snoopyHit = classImplementation.isHit(.index(transaction.snoopyIndex), .tag(transaction.snoopyTagIn));
 				logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = classImplementation.getCacheNumber(.index(transaction.snoopyIndex), .tag(transaction.snoopyTagIn));
+				logic[DATA_WIDTH - 1 : 0] snoopyDataOut      = classImplementation.getData(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex));
 				//check snoopy hit
 				if (transaction.snoopyHit != snoopyHit) begin
-					`uvm_info("SCOREBORAD::SNOOPY_HIT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", ~transaction.snoopyHit, transaction.snoopyHit), UVM_LOW);
+					`uvm_info("SNOOPY_HIT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", ~transaction.snoopyHit, transaction.snoopyHit), UVM_LOW);
 					errorCounter++;
 				end
 				
 				if (transaction.snoopyCacheNumber != cacheNumber) begin
-					`uvm_info("SCOREBORAD::SNOOPY_CACHE_NUMBER_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cacheNumber, transaction.snoopyCacheNumber), UVM_LOW);
+					`uvm_info("SNOOPY_CACHE_NUMBER_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", cacheNumber, transaction.snoopyCacheNumber), UVM_LOW);
+					errorCounter++;
+				end	
+
+				if (transaction.snoopyDataOut != snoopyDataOut) begin
+					`uvm_info("SNOOPY_DATA_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", snoopyDataOut, transaction.snoopyDataOut), UVM_LOW);
 					errorCounter++;
 				end	
 
 				//if snoopy hit write and check state
 				if (snoopyHit == 1) begin
-					classImplementation.writeState(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex), .state(transaction.snoopyStateIn));	
+					classImplementation.writeState(.index(transaction.snoopyIndex), .tag(transaction.snoopyTagIn), .state(transaction.snoopyStateIn));	
 					if (transaction.snoopyStateOut != classImplementation.getState(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex))) begin
-						`uvm_info("SCOREBORAD::SNOOPY_STATE_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", classImplementation.getState(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex)), transaction.snoopyStateOut), UVM_LOW);
+						`uvm_info("SNOOPY_STATE_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", classImplementation.getState(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex)), transaction.snoopyStateOut), UVM_LOW);
 						errorCounter++;
 					end
 
 					//invalidate
 					classImplementation.invalidate(.index(transaction.snoopyIndex), .tag(transaction.snoopyTagIn));
-					classImplementation.writeState(.cacheNumber(cacheNumber), .index(transaction.snoopyIndex), .state(INVALID_STATE));
+					classImplementation.writeState(.index(transaction.snoopyIndex),.tag(transaction.snoopyTagIn), .state(INVALID_STATE));
 					if (transaction.isInvalidated != ~classImplementation.isHit(.index(transaction.snoopyIndex), .tag(transaction.snoopyTagIn))) begin
-						`uvm_info("SCOREBORAD::SNOOPY_INVALIDATE_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", 1, transaction.isInvalidated), UVM_LOW);
+						`uvm_info("SNOOPY_INVALIDATE_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", 1, transaction.isInvalidated), UVM_LOW);
 						errorCounter++;
 					end	
 				end
 			end
 
 			if (errorCounter == 0) begin
-				`uvm_info("SCOREBOARD::TEST_OK", "", UVM_LOW)
+				`uvm_info("TEST_OK", "", UVM_LOW)
 			end
 		endfunction : check
 
