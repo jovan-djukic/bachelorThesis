@@ -147,6 +147,8 @@ module SetAssociativeCache#(
 	//encoders for cache numbers
 	//cpu encoder
 	always_comb begin
+		cacheInterface.cpuCacheNumber = 0;
+		
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cpuIndividualHitSignals[i] == 1) begin
 				cacheInterface.cpuCacheNumber = cpuCacheNumbers[i];
@@ -155,6 +157,8 @@ module SetAssociativeCache#(
 	end
 	//snoopy encoder
 	always_comb begin
+		cacheInterface.snoopyCacheNumber = 0;
+
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (snoopyIndividualHitSignals[i] == 1) begin
 				cacheInterface.snoopyCacheNumber = snoopyCacheNumbers[i];
@@ -165,6 +169,10 @@ module SetAssociativeCache#(
 
 	//cpu controller multiplexer
 	always_comb begin
+		cacheInterface.cpuTagOut   = 0; 
+		cacheInterface.cpuDataOut  = 0;
+		cacheInterface.cpuStateOut = cacheInterface.INVALID_STATE;
+
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cacheInterface.cpuCacheNumber == i) begin
 				cacheInterface.cpuTagOut   = cpuTagOuts[i];
@@ -176,6 +184,9 @@ module SetAssociativeCache#(
 
 	//snoopy controller multiplexer
 	always_comb begin
+		cacheInterface.snoopyStateOut = cacheInterface.INVALID_STATE;
+		cacheInterface.snoopyDataOut  = 0;
+
 		for (int i = 0; i< NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cacheInterface.snoopyCacheNumber == i) begin
 				cacheInterface.snoopyStateOut = snoopyStateOuts[i];

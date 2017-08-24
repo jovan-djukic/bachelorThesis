@@ -262,16 +262,20 @@ package setAssociativeCacheEnvirnomentPackage;
 
 			//now invalidate sam block
 			if (testInterface.cacheInterface.snoopyHit == 1) begin
+				//first invalidate line 
+				testInterface.invalidateEnable = 1;
+				repeat(2) begin
+					@(posedge testInterface.clock);
+				end
+				testInterface.invalidateEnable = 0;
+
+				//then invalidate state
 				testInterface.cacheInterface.snoopyStateIn    = INVALID_STATE;
 				testInterface.cacheInterface.snoopyWriteState = 1;
-				testInterface.invalidateEnable                = 1;
-
 				repeat (2) begin
 					@(posedge testInterface.clock);
 				end
-
 				testInterface.cacheInterface.snoopyWriteState = 0;
-				testInterface.invalidateEnable                = 0;
 			end
 
 			//wait for monitor to collect data
@@ -416,6 +420,12 @@ package setAssociativeCacheEnvirnomentPackage;
 
 			//if hit wait for wait for block invalidate
 			if (testInterface.cacheInterface.snoopyHit == 1) begin
+				//first wait for line invalidation
+				repeat (2) begin
+					@(posedge testInterface.clock);
+				end
+
+				//wait for state invalidation
 				repeat (2) begin
 					@(posedge testInterface.clock);
 				end
