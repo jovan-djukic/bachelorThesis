@@ -1,6 +1,6 @@
 module TestBench();
 	import uvm_pkg::*;
-	import setAssociativeCacheTestPackage::*;
+	import setAssociativeCacheUnitTestPackage::*;
 
 	TestInterface#(
 		.TAG_WIDTH(TAG_WIDTH),
@@ -14,9 +14,9 @@ module TestBench();
 
 	always #5 testInterface.clock = ~testInterface.clock;
 
-	SetAssociativeCache#(
+	SetAssociativeCacheUnit#(
 		.STATE_TYPE(STATE_TYPE)
-	)	setAssociativeCache(
+	)	setAssociativeCacheUnit(
 		.cacheInterface(testInterface.cacheInterface),
 		.accessEnable(testInterface.accessEnable),
 		.invalidateEnable(testInterface.invalidateEnable),

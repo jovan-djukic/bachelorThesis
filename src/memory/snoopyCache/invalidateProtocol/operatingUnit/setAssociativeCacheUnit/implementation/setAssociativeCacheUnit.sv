@@ -1,5 +1,5 @@
 //these are adjusted parameters
-module SetAssociativeCache#(
+module SetAssociativeCacheUnit#(
 	type STATE_TYPE          = logic[1 : 0]
 )(
 	CacheInterface.cache cacheInterface,
@@ -195,4 +195,4 @@ module SetAssociativeCache#(
 		end
 	end
 	//HIT_AND_CONTROL_LOGIC_END
-endmodule : SetAssociativeCache
+endmodule : SetAssociativeCacheUnit

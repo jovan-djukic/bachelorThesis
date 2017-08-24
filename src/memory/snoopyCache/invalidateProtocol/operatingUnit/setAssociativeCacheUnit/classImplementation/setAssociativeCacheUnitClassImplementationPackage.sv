@@ -1,6 +1,6 @@
-package setAssociativeCacheClassImplementationPackage;
+package setAssociativeCacheUnitClassImplementationPackage;
 	//class implementation	
-	class SetAssociativeCacheClassImplementation#(
+	class SetAssociativeCacheUnitClassImplementation#(
 		int TAG_WIDTH            = 8,
 		int INDEX_WIDTH          = 4,
 		int OFFSET_WIDTH         = 4,
@@ -92,6 +92,6 @@ package setAssociativeCacheClassImplementationPackage;
 			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
 			setAssociativeLRU.invalidate(.index(index), .line(cacheNumber));
 		endfunction : invalidate
-	endclass : SetAssociativeCacheClassImplementation
+	endclass : SetAssociativeCacheUnitClassImplementation
 
-endpackage : setAssociativeCacheClassImplementationPackage
+endpackage : setAssociativeCacheUnitClassImplementationPackage

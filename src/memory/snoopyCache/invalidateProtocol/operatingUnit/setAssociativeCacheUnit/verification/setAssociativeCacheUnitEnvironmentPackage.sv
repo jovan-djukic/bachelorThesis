@@ -1,4 +1,4 @@
-package setAssociativeCacheEnvirnomentPackage;
+package setAssociativeCacheUnitEnvirnomentPackage;
 
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
@@ -607,7 +607,7 @@ package setAssociativeCacheEnvirnomentPackage;
 			.STATE_SET(STATE_SET)
 		) transaction;
 
-		setAssociativeCacheClassImplementationPackage::SetAssociativeCacheClassImplementation#(
+		setAssociativeCacheUnitClassImplementationPackage::SetAssociativeCacheUnitClassImplementation#(
 			.TAG_WIDTH(TAG_WIDTH), 
 			.INDEX_WIDTH(INDEX_WIDTH),
 			.OFFSET_WIDTH(OFFSET_WIDTH),
@@ -820,4 +820,4 @@ package setAssociativeCacheEnvirnomentPackage;
 		endfunction : connect_phase
 	endclass : CacheAccessEnvironment
 
-endpackage : setAssociativeCacheEnvirnomentPackage
+endpackage : setAssociativeCacheUnitEnvirnomentPackage

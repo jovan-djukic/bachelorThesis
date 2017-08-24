@@ -1,8 +1,8 @@
-package setAssociativeCacheTestPackage;
+package setAssociativeCacheUnitTestPackage;
 
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
-	import setAssociativeCacheEnvirnomentPackage::*;
+	import setAssociativeCacheUnitEnvirnomentPackage::*;
 
 	typedef enum logic[1 : 0] {
 		STATE_0,
@@ -89,4 +89,4 @@ package setAssociativeCacheTestPackage;
 
 	endclass : CacheAccessTest
 
-endpackage : setAssociativeCacheTestPackage
+endpackage : setAssociativeCacheUnitTestPackage
