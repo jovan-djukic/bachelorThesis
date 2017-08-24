@@ -55,6 +55,7 @@ module LRU(
   end;
 
   always_comb begin
+		replacementAlgorithmInterface.replacementCacheLine = 0;
     for (int i = 0; i < replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES; i++) begin
       if (counters[i] == replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES - 1) begin
         replacementAlgorithmInterface.replacementCacheLine = i;
