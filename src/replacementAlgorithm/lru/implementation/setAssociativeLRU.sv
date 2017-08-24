@@ -73,6 +73,7 @@ module SetAssociativeLRU#(
 		end
 	endgenerate
 	always_comb begin
+		replacementAlgorithmInterface.replacementCacheLine = 0;
 		for (int i = 0; i < NUMBER_INDIVIDUAL_LRUS; i++) begin
 			if (cpuIndexIn == i) begin
 				replacementAlgorithmInterface.replacementCacheLine = replacementCacheLines[i];
@@ -82,3 +83,4 @@ module SetAssociativeLRU#(
 
 	//LRU_OUTPUTS_END
 endmodule : SetAssociativeLRU
+
