@@ -5,12 +5,12 @@ package simpleReadTestPackage;
 	import baseTestPackage::*;
 	import types::*;
 
-	localparam ADDRESS_WITDH     = 16;
-	localparam DATA_WIDTH        = 16;
-	localparam TAG_WIDTH         = 8;
-	localparam INDEX_WIDTH       = 4;
-	localparam OFFSET_WIDTH      = 4;
-	localparam SET_ASSOCIATIVITY = 2;
+	localparam ADDRESS_WITDH     = 32;
+	localparam DATA_WIDTH        = 32;
+	localparam TAG_WIDTH         = 16;
+	localparam INDEX_WIDTH       = 8;
+	localparam OFFSET_WIDTH      = 8;
+	localparam SET_ASSOCIATIVITY = 4;
 	localparam SEQUENCE_COUNT    = 1000;
 
 	class SimpleCacheReadTrasaction extends BaseCacheAccessTransaction#(
