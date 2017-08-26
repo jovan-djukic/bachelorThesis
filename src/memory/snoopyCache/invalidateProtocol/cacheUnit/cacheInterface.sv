@@ -33,7 +33,7 @@ interface CacheInterface#(
 		output cpuTagOut, cpuDataOut, cpuCacheNumber, cpuStateOut, cpuHit, snoopyDataOut, snoopyCacheNumber, snoopyStateOut, snoopyHit
 	);
 
-	modport protocol (
+	modport controller (
 		input cpuTagOut, cpuDataOut, cpuCacheNumber, cpuStateOut, cpuHit, snoopyDataOut, snoopyCacheNumber, snoopyStateOut, snoopyHit,
 		output cpuIndex, cpuOffset, cpuTagIn, cpuDataIn, cpuStateIn, cpuWriteTag, cpuWriteData, cpuWriteState, snoopyIndex, snoopyOffset, snoopyTagIn, snoopyStateIn,
 		snoopyWriteState
