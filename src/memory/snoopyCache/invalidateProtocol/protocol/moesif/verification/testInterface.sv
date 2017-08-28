@@ -12,12 +12,17 @@ interface TestInterface#(
 	MemoryInterface#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH)
-	) masterInterface();
+	) cpuMasterInterface();
 
 	MemoryInterface#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH)
-	) slaveInterface();
+	) cpuSlaveInterface();
+
+	ReadMemoryInterface#(
+		.ADDRESS_WITDH(ADDRESS_WITDH),
+		.DATA_WIDTH(DATA_WIDTH)
+	) snoopySlaveInterface();
 
 	CacheInterface#(
 		.TAG_WIDTH(TAG_WIDTH),
@@ -29,6 +34,9 @@ interface TestInterface#(
 	) cacheInterface();
 
 	BusInterface busInterface();
+
+	ArbiterInterface cpuArbiterInterface(), snoopyArbiterInterface();
+
 	logic accessEnable, invalidateEnable;
 
 	bit clock, reset;

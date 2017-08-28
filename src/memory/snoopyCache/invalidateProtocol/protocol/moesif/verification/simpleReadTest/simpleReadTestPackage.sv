@@ -5,13 +5,15 @@ package simpleReadTestPackage;
 	import baseTestPackage::*;
 	import types::*;
 
-	localparam ADDRESS_WITDH     = 32;
-	localparam DATA_WIDTH        = 32;
-	localparam TAG_WIDTH         = 16;
-	localparam INDEX_WIDTH       = 8;
-	localparam OFFSET_WIDTH      = 8;
-	localparam SET_ASSOCIATIVITY = 4;
-	localparam SEQUENCE_COUNT    = 1000;
+	localparam ADDRESS_WITDH       = 16;
+	localparam DATA_WIDTH          = 8;
+	localparam TAG_WIDTH           = 8;
+	localparam INDEX_WIDTH         = 4;
+	localparam OFFSET_WIDTH        = 4;
+	localparam SET_ASSOCIATIVITY   = 2;
+	localparam TEST_INTERFACE_NAME = "TestInterface";
+	localparam TEST_FACTORY_NAME   = "TestFactory";
+	localparam SEQUENCE_COUNT      = 1000;
 
 	class SimpleCacheReadTrasaction extends BaseCacheAccessTransaction#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
@@ -50,49 +52,33 @@ package simpleReadTestPackage;
 				.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
 			) testInterface
 		);
-			testInterface.slaveInterface.address     = address;
-			testInterface.slaveInterface.readEnabled = 1;
-			testInterface.busInterface.sharedIn      = isShared;
+			testInterface.cpuSlaveInterface.address     = address;
+			testInterface.cpuSlaveInterface.readEnabled = 1;
+			testInterface.busInterface.sharedIn         = isShared;
 	
 			do begin
 				@(posedge testInterface.clock);
 
 				if (testInterface.cacheInterface.cpuHit == 1) begin
 					break;
-				end else if (testInterface.masterInterface.readEnabled == 1) begin
-					testInterface.masterInterface.dataIn = data;
+				end
+
+				testInterface.cpuArbiterInterface.grant = testInterface.cpuArbiterInterface.request;
+
+				if (testInterface.cpuMasterInterface.readEnabled == 1) begin
+					testInterface.cpuMasterInterface.dataIn = data;
 					@(posedge testInterface.clock);
-					testInterface.masterInterface.functionComplete = 1;
+					testInterface.cpuMasterInterface.functionComplete = 1;
 					@(posedge testInterface.clock);
-					testInterface.masterInterface.functionComplete = 0;
+					testInterface.cpuMasterInterface.functionComplete = 0;
 				end
 			end while (1);
 
-			testInterface.slaveInterface.readEnabled = 0;
+			testInterface.cpuSlaveInterface.readEnabled = 0;
 		endtask : drive
 	endclass : SimpleCacheReadTrasaction
 
-	class SimpleCacheReadSequence extends BaseCacheAccessSequence#(
-		.ADDRESS_WITDH(ADDRESS_WITDH),
-		.DATA_WIDTH(DATA_WIDTH),
-		.TAG_WIDTH(TAG_WIDTH),
-		.INDEX_WIDTH(INDEX_WIDTH),
-		.OFFSET_WIDTH(OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
-		.SEQUENCE_COUNT(SEQUENCE_COUNT)
-	);
-		`uvm_object_utils(SimpleCacheReadSequence)
-
-		function new(string name = "SimpleCacheReadSequence");
-			super.new(.name(name));
-		endfunction : new
-
-		function SimpleCacheReadTrasaction createTransaction();
-			return SimpleCacheReadTrasaction::type_id::create(.name("SimpleCacheReadTrasaction"));
-		endfunction : createTransaction
-	endclass : SimpleCacheReadSequence
-
-	class SimpleCacheReadCollectedTransaction extends BaseCollectedCacheAccessTransaction#(
+	class SimpleCacheReadCollectedTransaction extends BaseCollectedCacheTransaction#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -125,8 +111,9 @@ package simpleReadTestPackage;
 
 				if (testInterface.cacheInterface.cpuHit == 1) begin
 					break;
-				end else if (testInterface.masterInterface.readEnabled == 1 && testInterface.masterInterface.functionComplete == 1) begin
-					ramBlock[testInterface.masterInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.masterInterface.dataIn;
+				end
+				if (testInterface.cpuMasterInterface.readEnabled == 1 && testInterface.cpuMasterInterface.functionComplete == 1) begin
+					ramBlock[testInterface.cpuMasterInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.cpuMasterInterface.dataIn;
 					cpuHit = 0;
 				end
 				if (testInterface.cacheInterface.cpuWriteData == 1) begin
@@ -143,13 +130,13 @@ package simpleReadTestPackage;
 
 			end while (1);
 
-			readData   = testInterface.slaveInterface.dataIn;
-			cpuAddress = testInterface.slaveInterface.address;
+			readData   = testInterface.cpuSlaveInterface.dataIn;
+			cpuAddress = testInterface.cpuSlaveInterface.address;
 		endtask : collect
 
 	endclass : SimpleCacheReadCollectedTransaction
 
-	class SimpleCacheReadMonitor extends BaseCacheAccessMonitor#(
+	class SimpleCacheReadTestModel extends BaseTestModel#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -157,72 +144,10 @@ package simpleReadTestPackage;
 		.OFFSET_WIDTH(OFFSET_WIDTH),
 		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
 	);
-		
-		`uvm_component_utils(SimpleCacheReadMonitor)
-
-		function new(string name = "SimpleCacheReadMonitor", uvm_component parent);
-			super.new(.name(name), .parent(parent));
-		endfunction : new
-		
-		virtual function BaseCollectedCacheAccessTransaction#(
-			.ADDRESS_WITDH(ADDRESS_WITDH),
-			.DATA_WIDTH(DATA_WIDTH),
-			.TAG_WIDTH(TAG_WIDTH),
-			.INDEX_WIDTH(INDEX_WIDTH),
-			.OFFSET_WIDTH(OFFSET_WIDTH),
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		) createTransaction();
-			SimpleCacheReadCollectedTransaction newTransaction = new();
-			return newTransaction;
-		endfunction : createTransaction
-		
-	endclass : SimpleCacheReadMonitor
-
-	class SimpleCacheReadAgent extends BaseCacheAccessAgent#(
-		.ADDRESS_WITDH(ADDRESS_WITDH),
-		.DATA_WIDTH(DATA_WIDTH),
-		.TAG_WIDTH(TAG_WIDTH),
-		.INDEX_WIDTH(INDEX_WIDTH),
-		.OFFSET_WIDTH(OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-	);
-		`uvm_component_utils(SimpleCacheReadAgent)
-
-		function new(string name = "SimpleCacheReadAgent", uvm_component parent);
-			super.new(.name(name), .parent(parent));
-		endfunction : new
-
-		virtual function BaseCacheAccessMonitor#(
-			.ADDRESS_WITDH(ADDRESS_WITDH),
-			.DATA_WIDTH(DATA_WIDTH),
-			.TAG_WIDTH(TAG_WIDTH),
-			.INDEX_WIDTH(INDEX_WIDTH),
-			.OFFSET_WIDTH(OFFSET_WIDTH),
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		) createMonitor();
-			return SimpleCacheReadMonitor::type_id::create(.name("monitor"), .parent(this));
-		endfunction : createMonitor
-	endclass : SimpleCacheReadAgent
-
-	class SimpleCacheReadScoreboard extends BaseCacheAccessScoreboard#(
-		.ADDRESS_WITDH(ADDRESS_WITDH),
-		.DATA_WIDTH(DATA_WIDTH),
-		.TAG_WIDTH(TAG_WIDTH),
-		.INDEX_WIDTH(INDEX_WIDTH),
-		.OFFSET_WIDTH(OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-	);
-		
-		`uvm_component_utils(SimpleCacheReadScoreboard)
-
 		localparam NUMBER_OF_WORDS_PER_LINE = 1 << OFFSET_WIDTH;
 
-		function new(string name = "SimpleCacheReadScoreboard", uvm_component parent);
-			super.new(.name(name), .parent(parent));
-		endfunction : new
-
 		virtual function void compare(
-			BaseCollectedCacheAccessTransaction#(
+			BaseCollectedCacheTransaction#(
 				.ADDRESS_WITDH(ADDRESS_WITDH),
 				.DATA_WIDTH(DATA_WIDTH),
 				.TAG_WIDTH(TAG_WIDTH),
@@ -239,45 +164,45 @@ package simpleReadTestPackage;
 			if (collectedTransaction.cpuHit == 0) begin
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
 					if (collectedTransaction.cacheLine[i] != collectedTransaction.ramBlock[i]) begin
-						`uvm_error("SCOREBOARD::DATA_MISMATCH", "");
+						`uvm_error("TEST_MODEL::DATA_MISMATCH", "");
 						errorCounter++;
 					end
 				end
 
 				if (collectedTransaction.isShared == 1 && collectedTransaction.state != FORWARD) begin
-					`uvm_error("SCOREBOARD::STATE_MISMATCH_FORWARD", "");
+					`uvm_error("TEST_MODEL::STATE_MISMATCH_FORWARD", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.isShared == 0 && collectedTransaction.state != EXCLUSIVE) begin
-					`uvm_error("SCOREBOARD::STATE_MISMATCH_EXCLUSIVE", "");
+					`uvm_error("TEST_MODEL::STATE_MISMATCH_EXCLUSIVE", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.tag != collectedTransaction.cpuAddress[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH]) begin
-					`uvm_error("SCOREBOARD::TAG_MISMATCH", "");
+					`uvm_error("TEST_MODEL::TAG_MISMATCH", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.index != collectedTransaction.cpuAddress[OFFSET_WIDTH +: INDEX_WIDTH]) begin
-					`uvm_error("SCOREBOARD::INDEX_MISMATCH", "");
+					`uvm_error("TEST_MODEL::INDEX_MISMATCH", "");
 					errorCounter++;
 				end
 			end	
 
 			if (collectedTransaction.readData != collectedTransaction.ramBlock[collectedTransaction.cpuAddress[OFFSET_WIDTH - 1 : 0]]) begin
-				`uvm_error("SCOREBOARD::DATA_MISMATCH", "")
+				`uvm_error("TEST_MODEL::DATA_MISMATCH", "")
 				errorCounter++;
 			end	
 
 			if (errorCounter == 0) begin
-				`uvm_info("SCOREBOARD::TEST_OK", "", UVM_LOW)
+				`uvm_info("TEST_MODEL::TEST_OK", "", UVM_LOW)
 			end
 
 		endfunction : compare 
-	endclass : SimpleCacheReadScoreboard
+	endclass : SimpleCacheReadTestModel
 
-	class SimpleCacheReadEnvironment extends BaseCacheAccessEnvironment#(
+	class SimpleCacheReadTestItemFactory extends BaseTestItemFactory#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -285,40 +210,58 @@ package simpleReadTestPackage;
 		.OFFSET_WIDTH(OFFSET_WIDTH),
 		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
 	);
-		
-		`uvm_component_utils(SimpleCacheReadEnvironment)
-
-		function new(string name = "SimpleCacheReadEnvironment", uvm_component parent);
-			super.new(.name(name), .parent(parent));
-		endfunction : new
-
-		virtual function BaseCacheAccessScoreboard#(
+		virtual function BaseCacheAccessTransaction#(
 			.ADDRESS_WITDH(ADDRESS_WITDH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.TAG_WIDTH(TAG_WIDTH),
 			.INDEX_WIDTH(INDEX_WIDTH),
 			.OFFSET_WIDTH(OFFSET_WIDTH),
 			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		) createScoreboard();
-			return SimpleCacheReadScoreboard::type_id::create(.name("scoreboard"), .parent(this));
-		endfunction : createScoreboard
+		) createCacheAccessTransaction();
 
-		virtual function BaseCacheAccessAgent#(
+			return SimpleCacheReadTrasaction::type_id::create(.name("simpleCacheReadTransaction"));
+		endfunction : createCacheAccessTransaction
+
+		virtual function BaseCollectedCacheTransaction#(
 			.ADDRESS_WITDH(ADDRESS_WITDH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.TAG_WIDTH(TAG_WIDTH),
 			.INDEX_WIDTH(INDEX_WIDTH),
 			.OFFSET_WIDTH(OFFSET_WIDTH),
 			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		) createAgent();
-			return SimpleCacheReadAgent::type_id::create(.name("agent"), .parent(this));
-		endfunction : createAgent
-	endclass : SimpleCacheReadEnvironment
+		) createCollectedCacheTransaction();
+			SimpleCacheReadCollectedTransaction collectedCacheTransaction = new();
+
+			return collectedCacheTransaction;
+		endfunction : createCollectedCacheTransaction
+
+		virtual function BaseTestModel#(
+			.ADDRESS_WITDH(ADDRESS_WITDH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.TAG_WIDTH(TAG_WIDTH),
+			.INDEX_WIDTH(INDEX_WIDTH),
+			.OFFSET_WIDTH(OFFSET_WIDTH),
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+		) createTestModel();
+			SimpleCacheReadTestModel testModel = new();
+
+			return testModel;
+		endfunction : createTestModel
+	endclass : SimpleCacheReadTestItemFactory
 
 	class SimpleCacheReadTest extends uvm_test;
 		`uvm_component_utils(SimpleCacheReadTest)
 
-		SimpleCacheReadEnvironment environment;
+		BaseCacheAccessEnvironment#(
+			.ADDRESS_WITDH(ADDRESS_WITDH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.TAG_WIDTH(TAG_WIDTH),
+			.INDEX_WIDTH(INDEX_WIDTH),
+			.OFFSET_WIDTH(OFFSET_WIDTH),
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+			.TEST_INTERFACE_NAME(TEST_INTERFACE_NAME),
+			.TEST_FACTORY_NAME(TEST_FACTORY_NAME)
+		) environment;
 
 		function new(string name = "SimpleCacheReadTest", uvm_component parent = null);
 			super.new(.name(name), .parent(parent));
@@ -327,11 +270,38 @@ package simpleReadTestPackage;
 		virtual function void build_phase(uvm_phase phase);
 			super.build_phase(.phase(phase));
 
-			environment = SimpleCacheReadEnvironment::type_id::create(.name("environment"), .parent(this));
+			environment = BaseCacheAccessEnvironment#(
+				.ADDRESS_WITDH(ADDRESS_WITDH),
+				.DATA_WIDTH(DATA_WIDTH),
+				.TAG_WIDTH(TAG_WIDTH),
+				.INDEX_WIDTH(INDEX_WIDTH),
+				.OFFSET_WIDTH(OFFSET_WIDTH),
+				.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+				.TEST_INTERFACE_NAME(TEST_INTERFACE_NAME),
+				.TEST_FACTORY_NAME(TEST_FACTORY_NAME)
+			)::type_id::create(.name("environment"), .parent(this));
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
-			SimpleCacheReadSequence testSequence = SimpleCacheReadSequence::type_id::create(.name("testSequence"));
+			BaseCacheAccessSequence#(
+				.ADDRESS_WITDH(ADDRESS_WITDH),
+				.DATA_WIDTH(DATA_WIDTH),
+				.TAG_WIDTH(TAG_WIDTH),
+				.INDEX_WIDTH(INDEX_WIDTH),
+				.OFFSET_WIDTH(OFFSET_WIDTH),
+				.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+				.TEST_FACTORY_NAME(TEST_FACTORY_NAME),
+				.SEQUENCE_COUNT(SEQUENCE_COUNT)
+			) testSequence = BaseCacheAccessSequence#(
+				.ADDRESS_WITDH(ADDRESS_WITDH),
+				.DATA_WIDTH(DATA_WIDTH),
+				.TAG_WIDTH(TAG_WIDTH),
+				.INDEX_WIDTH(INDEX_WIDTH),
+				.OFFSET_WIDTH(OFFSET_WIDTH),
+				.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+				.TEST_FACTORY_NAME(TEST_FACTORY_NAME),
+				.SEQUENCE_COUNT(SEQUENCE_COUNT)
+			)::type_id::create(.name("testSequence"));
 			phase.raise_objection(this);
 				testSequence.start(environment.agent.sequencer);	
 			phase.drop_objection(this);
