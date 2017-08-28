@@ -7,4 +7,9 @@ package types;
 		FORWARD,
 		INVALID
 	} CacheLineState;
+
+	typedef enum logic[1 : 0] {
+		NONE,
+		BUS_READ	
+	} BusCommand;
 endpackage : types  
