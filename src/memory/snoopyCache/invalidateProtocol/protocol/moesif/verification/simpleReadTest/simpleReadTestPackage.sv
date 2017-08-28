@@ -6,7 +6,7 @@ package simpleReadTestPackage;
 	import types::*;
 
 	localparam ADDRESS_WITDH       = 16;
-	localparam DATA_WIDTH          = 8;
+	localparam DATA_WIDTH          = 16;
 	localparam TAG_WIDTH           = 8;
 	localparam INDEX_WIDTH         = 4;
 	localparam OFFSET_WIDTH        = 4;
@@ -38,7 +38,7 @@ package simpleReadTestPackage;
 			super.new(.name(name));
 		endfunction : new
 		
-		function void myRandomize();
+		virtual function void myRandomize();
 			address = $urandom();
 		endfunction : myRandomize
 
@@ -59,7 +59,7 @@ package simpleReadTestPackage;
 			do begin
 				@(posedge testInterface.clock);
 
-				if (testInterface.cacheInterface.cpuHit == 1) begin
+				if (testInterface.cpuSlaveInterface.functionComplete == 1) begin
 					break;
 				end
 
@@ -75,6 +75,7 @@ package simpleReadTestPackage;
 			end while (1);
 
 			testInterface.cpuSlaveInterface.readEnabled = 0;
+			@(posedge testInterface.clock);
 		endtask : drive
 	endclass : SimpleCacheReadTrasaction
 
@@ -109,7 +110,7 @@ package simpleReadTestPackage;
 			do begin
 				@(posedge testInterface.clock);
 
-				if (testInterface.cacheInterface.cpuHit == 1) begin
+				if (testInterface.cpuSlaveInterface.functionComplete == 1) begin
 					break;
 				end
 				if (testInterface.cpuMasterInterface.readEnabled == 1 && testInterface.cpuMasterInterface.functionComplete == 1) begin
@@ -132,6 +133,7 @@ package simpleReadTestPackage;
 
 			readData   = testInterface.cpuSlaveInterface.dataIn;
 			cpuAddress = testInterface.cpuSlaveInterface.address;
+			@(posedge testInterface.clock);
 		endtask : collect
 
 	endclass : SimpleCacheReadCollectedTransaction
@@ -164,39 +166,39 @@ package simpleReadTestPackage;
 			if (collectedTransaction.cpuHit == 0) begin
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
 					if (collectedTransaction.cacheLine[i] != collectedTransaction.ramBlock[i]) begin
-						`uvm_error("TEST_MODEL::DATA_MISMATCH", "");
+						`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::DATA_MISMATCH", "");
 						errorCounter++;
 					end
 				end
 
 				if (collectedTransaction.isShared == 1 && collectedTransaction.state != FORWARD) begin
-					`uvm_error("TEST_MODEL::STATE_MISMATCH_FORWARD", "");
+					`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::STATE_MISMATCH_FORWARD", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.isShared == 0 && collectedTransaction.state != EXCLUSIVE) begin
-					`uvm_error("TEST_MODEL::STATE_MISMATCH_EXCLUSIVE", "");
+					`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::STATE_MISMATCH_EXCLUSIVE", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.tag != collectedTransaction.cpuAddress[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH]) begin
-					`uvm_error("TEST_MODEL::TAG_MISMATCH", "");
+					`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::TAG_MISMATCH", "");
 					errorCounter++;
 				end
 
 				if (collectedTransaction.index != collectedTransaction.cpuAddress[OFFSET_WIDTH +: INDEX_WIDTH]) begin
-					`uvm_error("TEST_MODEL::INDEX_MISMATCH", "");
+					`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::INDEX_MISMATCH", "");
 					errorCounter++;
 				end
 			end	
 
 			if (collectedTransaction.readData != collectedTransaction.ramBlock[collectedTransaction.cpuAddress[OFFSET_WIDTH - 1 : 0]]) begin
-				`uvm_error("TEST_MODEL::DATA_MISMATCH", "")
+				`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::DATA_MISMATCH", "")
 				errorCounter++;
 			end	
 
 			if (errorCounter == 0) begin
-				`uvm_info("TEST_MODEL::TEST_OK", "", UVM_LOW)
+				`uvm_info("SIMPLE_CACHE_READ_TEST_MODEL::TEST_OK", "", UVM_LOW)
 			end
 
 		endfunction : compare 
