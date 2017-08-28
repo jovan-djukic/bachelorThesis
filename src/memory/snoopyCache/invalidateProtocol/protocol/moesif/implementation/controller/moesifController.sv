@@ -144,17 +144,26 @@ module MOESIFController(
 	assign cacheInterface.snoopyOffset = snoopySlaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0];
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
-		if (snoopyArbiterInterface.grant == 1) begin
-			case (busInterface.snoopyCommandIn) 
-				BUS_READ: begin
-					if (snoopySlaveInterface.functionComplete == 1) begin
-						snoopySlaveInterface.functionComplete <= 1;
+		case (busInterface.snoopyCommandIn) 
+			BUS_READ: begin
+				if (cacheInterface.snoopyHit == 1) begin
+					if (cacheInterface.snoopyStateOut != SHARED) begin
+						cacheInterface.snoopyStateIn    <= SHARED;
+						cacheInterface.snoopyWriteState <= 1;
 					end else begin
-						snoopySlaveInterface.functionComplete <= 0;
+						cacheInterface.snoopyWriteState <= 0;
+					end
+					
+					if (snoopyArbiterInterface.grant == 1) begin
+						if (snoopySlaveInterface.readEnabled == 1) begin
+							snoopySlaveInterface.functionComplete <= 1;
+						end else begin
+							snoopySlaveInterface.functionComplete <= 0;
+						end
 					end
 				end
-			endcase
-		end	
+			end
+		endcase
 	end
 	//SNOPY_CONTROLLER_END
 endmodule : MOESIFController
