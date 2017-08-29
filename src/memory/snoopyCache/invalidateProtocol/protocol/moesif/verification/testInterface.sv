@@ -1,10 +1,12 @@
 interface TestInterface#(
-	int ADDRESS_WITDH     = 32,
-	int DATA_WIDTH        = 32,
-	int TAG_WIDTH         = 6,
-	int INDEX_WIDTH       = 6,
-	int OFFSET_WIDTH      = 4,
-	int SET_ASSOCIATIVITY = 2
+	int ADDRESS_WITDH      = 32,
+	int DATA_WIDTH         = 32,
+	int TAG_WIDTH          = 6,
+	int INDEX_WIDTH        = 6,
+	int OFFSET_WIDTH       = 4,
+	int SET_ASSOCIATIVITY  = 2,
+	int NUMBER_OF_CACHES   = 4,
+	int CACHE_NUMBER_WIDTH = $clog2(NUMBER_OF_CACHES)
 )();
 
 	import types::*;
@@ -33,7 +35,10 @@ interface TestInterface#(
 		.INVALID_STATE(INVALID)
 	) cacheInterface();
 
-	BusInterface busInterface();
+	BusInterface#(
+		.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
+		.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
+	) busInterface();
 
 	ArbiterInterface cpuArbiterInterface(), snoopyArbiterInterface();
 
