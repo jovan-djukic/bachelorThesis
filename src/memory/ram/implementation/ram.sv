@@ -31,11 +31,15 @@ module RAM#(
 				memory[memoryInterface.address] <= memoryInterface.dataOut;	
 				if (counter != 0) begin
 					counter <= counter - 1;
-				end 			
+				end else begin
+					counter <= 0;
+				end
 			end else if (memoryInterface.readEnabled  == 1) begin
 				memoryInterface.dataIn <= memory[memoryInterface.address];		
 				if (counter != 0) begin
 					counter <= counter - 1;
+				end else begin 
+					counter <= 0;
 				end 
 			end
 		end		
