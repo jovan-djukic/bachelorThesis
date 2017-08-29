@@ -1,11 +1,11 @@
 interface TestInterface#(
 	int ADDRESS_WITDH      = 32,
 	int DATA_WIDTH         = 32,
-	int TAG_WIDTH          = 6,
-	int INDEX_WIDTH        = 6,
-	int OFFSET_WIDTH       = 4,
-	int SET_ASSOCIATIVITY  = 2,
-	int NUMBER_OF_CACHES   = 4,
+	int TAG_WIDTH          = 16,
+	int INDEX_WIDTH        = 8,
+	int OFFSET_WIDTH       = 8,
+	int SET_ASSOCIATIVITY  = 4,
+	int NUMBER_OF_CACHES   = 8,
 	int CACHE_NUMBER_WIDTH = $clog2(NUMBER_OF_CACHES)
 )();
 
@@ -31,6 +31,7 @@ interface TestInterface#(
 		.INDEX_WIDTH(INDEX_WIDTH),
 		.OFFSET_WIDTH(OFFSET_WIDTH),
 		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.DATA_WIDTH(DATA_WIDTH),
 		.STATE_TYPE(CacheLineState),
 		.INVALID_STATE(INVALID)
 	) cacheInterface();
