@@ -39,7 +39,9 @@ package simpleReadTestPackage;
 		endfunction : new
 		
 		virtual function void myRandomize();
-			address = $urandom();
+			address  = $urandom();
+			data     = $urandom();
+			isShared = $urandom();
 		endfunction : myRandomize
 
 		virtual task drive(
@@ -69,8 +71,11 @@ package simpleReadTestPackage;
 					testInterface.cpuMasterInterface.dataIn = data;
 					@(posedge testInterface.clock);
 					testInterface.cpuMasterInterface.functionComplete = 1;
-					@(posedge testInterface.clock);
+					while (testInterface.cpuMasterInterface.readEnabled != 0) begin
+						@(posedge testInterface.clock);
+					end
 					testInterface.cpuMasterInterface.functionComplete = 0;
+					data++;
 				end
 			end while (1);
 
@@ -89,12 +94,12 @@ package simpleReadTestPackage;
 	);
 		localparam NUMBER_OF_WORDS_PER_LINE = 1 << OFFSET_WIDTH;
 
-		logic[DATA_WIDTH - 1    : 0] cacheLine[NUMBER_OF_WORDS_PER_LINE], ramBlock[NUMBER_OF_WORDS_PER_LINE], readData;
-		logic[ADDRESS_WITDH - 1 : 0] cpuAddress;
-		logic[TAG_WIDTH - 1     : 0] tag;
-		logic[INDEX_WIDTH - 1   : 0] index;
-		logic 											 isShared, cpuHit;
-		CacheLineState 						 	 state;
+		bit[DATA_WIDTH - 1    : 0] cacheLine[NUMBER_OF_WORDS_PER_LINE], ramBlock[NUMBER_OF_WORDS_PER_LINE], readData, cacheData;
+		bit[ADDRESS_WITDH - 1 : 0] cpuAddress;
+		bit[TAG_WIDTH - 1     : 0] tag;
+		bit[INDEX_WIDTH - 1   : 0] index;
+		bit 											 isShared, cpuHit;
+		CacheLineState 						 state;
 
 		virtual task collect(
 			virtual TestInterface#(
@@ -113,7 +118,7 @@ package simpleReadTestPackage;
 				if (testInterface.cpuSlaveInterface.functionComplete == 1) begin
 					break;
 				end
-				if (testInterface.cpuMasterInterface.readEnabled == 1 && testInterface.cpuMasterInterface.functionComplete == 1) begin
+				if (testInterface.cpuMasterInterface.functionComplete == 1) begin
 					ramBlock[testInterface.cpuMasterInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.cpuMasterInterface.dataIn;
 					cpuHit = 0;
 				end
@@ -131,6 +136,7 @@ package simpleReadTestPackage;
 
 			end while (1);
 
+			cacheData  = testInterface.cacheInterface.cpuDataOut;
 			readData   = testInterface.cpuSlaveInterface.dataIn;
 			cpuAddress = testInterface.cpuSlaveInterface.address;
 			@(posedge testInterface.clock);
@@ -166,7 +172,7 @@ package simpleReadTestPackage;
 			if (collectedTransaction.cpuHit == 0) begin
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
 					if (collectedTransaction.cacheLine[i] != collectedTransaction.ramBlock[i]) begin
-						`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::DATA_MISMATCH", "");
+						`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::RAM_DATA_MISMATCH", "");
 						errorCounter++;
 					end
 				end
@@ -192,8 +198,8 @@ package simpleReadTestPackage;
 				end
 			end	
 
-			if (collectedTransaction.readData != collectedTransaction.ramBlock[collectedTransaction.cpuAddress[OFFSET_WIDTH - 1 : 0]]) begin
-				`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::DATA_MISMATCH", "")
+			if (collectedTransaction.readData != collectedTransaction.cacheData) begin
+				`uvm_error("SIMPLE_CACHE_READ_TEST_MODEL::READ_DATA_MISMATCH", "")
 				errorCounter++;
 			end	
 

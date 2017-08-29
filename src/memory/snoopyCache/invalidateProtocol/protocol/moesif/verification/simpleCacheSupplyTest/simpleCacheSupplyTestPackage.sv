@@ -55,8 +55,11 @@ package simpleCacheSupplyTestPackage;
 	class SimpleCollectedCacheSupplyTransaction extends SimpleCacheReadCollectedTransaction;
 		
 		localparam NUMBER_OF_WORDS = 1 << OFFSET_WIDTH;
-		logic[DATA_WIDTH - 1 : 0] suppliedData[NUMBER_OF_WORDS];	
-		CacheLineState state;
+		bit[DATA_WIDTH - 1    : 0] suppliedData[NUMBER_OF_WORDS], cachedData[NUMBER_OF_WORDS];
+		bit[TAG_WIDTH - 1     : 0] tag;
+		bit[INDEX_WIDTH - 1   : 0] index;
+		bit[ADDRESS_WITDH - 1 : 0] snoopyAddress;
+		CacheLineState stateIn, stateOut;
 		bit stateWriten;
 
 		virtual task collect(
@@ -74,7 +77,8 @@ package simpleCacheSupplyTestPackage;
 			for (int i = 0; i < NUMBER_OF_WORDS; i++) begin
 				while (1) begin
 					if (testInterface.cacheInterface.snoopyWriteState == 1) begin
-						state       = testInterface.cacheInterface.snoopyStateIn;
+						stateIn     = testInterface.cacheInterface.snoopyStateIn;
+						stateOut    = testInterface.cacheInterface.snoopyStateOut;
 						stateWriten = 1;
 					end
 					if (testInterface.snoopySlaveInterface.functionComplete == 1) begin
@@ -83,8 +87,13 @@ package simpleCacheSupplyTestPackage;
 					@(posedge testInterface.clock);	
 				end
 				suppliedData[testInterface.snoopySlaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.snoopySlaveInterface.dataIn;
+				cachedData[testInterface.snoopySlaveInterface.address[OFFSET_WIDTH - 1 : 0]]   = testInterface.cacheInterface.snoopyDataOut;
 				@(posedge testInterface.clock);
 			end
+
+			tag           = testInterface.cacheInterface.snoopyTagIn;
+			index         = testInterface.cacheInterface.snoopyIndex;
+			snoopyAddress = testInterface.snoopySlaveInterface.address;
 			@(posedge testInterface.clock);
 		endtask : collect
 	endclass : SimpleCollectedCacheSupplyTransaction
@@ -110,14 +119,24 @@ package simpleCacheSupplyTestPackage;
 			$cast(collectedTransaction, transaction);
 	
 			for (int i = 0; i < NUMBER_OF_WORDS; i++) begin
-				if (collectedTransaction.suppliedData[i] != collectedTransaction.cacheLine[i]) begin
-					`uvm_error("DATA_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", collectedTransaction.cacheLine[i], collectedTransaction.suppliedData[i]));
+				if (collectedTransaction.suppliedData[i] != collectedTransaction.cachedData[i]) begin
+					`uvm_error("DATA_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", collectedTransaction.cachedData[i], collectedTransaction.suppliedData[i]));
 					errorCount++;
 				end
 			end
 
-			if (collectedTransaction.stateWriten == 1 && collectedTransaction.state != SHARED) begin
-				`uvm_error("STATE_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", collectedTransaction.state, SHARED))
+			if (collectedTransaction.stateWriten == 1 && ((collectedTransaction.stateOut == MODIFIED && collectedTransaction.stateIn != OWNED) || collectedTransaction.stateIn != SHARED)) begin
+				`uvm_error("STATE_MISMATCH", "")
+				errorCount++;
+			end
+
+			if (collectedTransaction.tag != collectedTransaction.snoopyAddress[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH]) begin
+				`uvm_error("TAG_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", collectedTransaction.tag, collectedTransaction.snoopyAddress[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH]))
+				errorCount++;
+			end
+
+			if (collectedTransaction.index != collectedTransaction.snoopyAddress[OFFSET_WIDTH +: INDEX_WIDTH]) begin
+				`uvm_error("INDEX_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", collectedTransaction.index, collectedTransaction.snoopyAddress[OFFSET_WIDTH +: TAG_WIDTH]))
 				errorCount++;
 			end
 
