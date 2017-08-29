@@ -2,6 +2,7 @@ package baseTestPackage;
 	
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
+	import setAssociativeCacheUnitClassImplementationPackage::*;
 
 	//BaseCacheAccessTransaction, this class is used for driving signals, drive method is overriden for the desidered behaviour
 	class BaseCacheAccessTransaction#(

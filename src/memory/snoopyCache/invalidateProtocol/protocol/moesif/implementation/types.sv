@@ -1,7 +1,7 @@
 package types;
 	typedef enum logic[2 : 0] {
 		MODIFIED,
-		OWNDED,
+		OWNED,
 		EXCLUSIVE,
 		SHARED,
 		FORWARD,
@@ -10,6 +10,7 @@ package types;
 
 	typedef enum logic[1 : 0] {
 		NONE,
-		BUS_READ	
+		BUS_READ,
+		BUS_INVALIDATE
 	} BusCommand;
 endpackage : types  
