@@ -150,7 +150,7 @@ module SetAssociativeCacheUnit#(
 		cacheInterface.cpuCacheNumber = 0;
 		
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
-			if (cpuIndividualHitSignals[i] == 1) begin
+			if (cpuCacheSelectSignals[i] == 1) begin
 				cacheInterface.cpuCacheNumber = cpuCacheNumbers[i];
 			end
 		end
@@ -160,7 +160,7 @@ module SetAssociativeCacheUnit#(
 		cacheInterface.snoopyCacheNumber = 0;
 
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
-			if (snoopyIndividualHitSignals[i] == 1) begin
+			if (snoopyCacheSelectSignals[i] == 1) begin
 				cacheInterface.snoopyCacheNumber = snoopyCacheNumbers[i];
 			end
 		end
