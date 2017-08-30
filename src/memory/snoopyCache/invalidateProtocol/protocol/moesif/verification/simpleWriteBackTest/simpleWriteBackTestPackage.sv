@@ -1,4 +1,4 @@
-package simpleWriteTestPackage;
+package simpleWriteBackTestPackage;
 
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
@@ -18,7 +18,9 @@ package simpleWriteTestPackage;
 	localparam TEST_FACTORY_NAME   = "TestFactory";
 	localparam SEQUENCE_COUNT      = 1000;
 
-	class SimpleCacheWriteTransaction extends BaseCacheAccessTransaction#(
+	localparam NUMBER_OF_WORDS_PER_LINE = 1 << OFFSET_WIDTH;
+
+	class SimpleCacheWriteBackTransaction extends BaseCacheAccessTransaction#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -32,7 +34,7 @@ package simpleWriteTestPackage;
 		bit[DATA_WIDTH - 1    : 0] ramData, writeData;
 		bit 											 isShared;
 
-		`uvm_object_utils_begin(SimpleCacheWriteTransaction)
+		`uvm_object_utils_begin(SimpleCacheWriteBackTransaction)
 			`uvm_field_int(address, UVM_ALL_ON)
 			`uvm_field_int(ramData, UVM_ALL_ON)
 			`uvm_field_int(writeData, UVM_ALL_ON)
@@ -110,9 +112,9 @@ package simpleWriteTestPackage;
 				@(posedge testInterface.clock);
 			end
 		endtask : drive
-	endclass : SimpleCacheWriteTransaction
+	endclass : SimpleCacheWriteBackTransaction
 
-	class SimpleCacheWriteCollectedTransaction extends BaseCollectedCacheTransaction#(
+	class SimpleCacheWriteBackCollectedTransaction extends BaseCollectedCacheTransaction#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -122,9 +124,12 @@ package simpleWriteTestPackage;
 		.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
 		.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
 	);
-		bit[NUMBER_OF_CACHES - 1 : 0] invalidated;
-		bit[DATA_WIDTH - 1       : 0] writeData, cacheData;
-		CacheLineState 								stateIn, stateOut;
+		bit[TAG_WIDTH - 1     : 0] writeBackTag;
+		bit[INDEX_WIDTH - 1   : 0] writeBackIndex;
+		bit[DATA_WIDTH - 1    : 0] writeBackData[NUMBER_OF_WORDS_PER_LINE], cacheData[NUMBER_OF_WORDS_PER_LINE];
+		bit[ADDRESS_WITDH - 1 : 0] writeBackAddress;
+		bit												 writeBackOccured;
+		CacheLineState writeBackStateOut, writeBackStateIn;
 
 		virtual task collect(
 			virtual TestInterface#(
@@ -138,40 +143,41 @@ package simpleWriteTestPackage;
 				.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
 			) testInterface
 		);
-			invalidated = 1 << CACHE_ID;
 			do begin
 				@(posedge testInterface.clock);
-
-				//collect state, if cache is not present this if will be executed twice
-				if (testInterface.cacheInterface.cpuWriteState == 1) begin
-					stateIn  = testInterface.cacheInterface.cpuStateIn;
-					stateOut = testInterface.cacheInterface.cpuStateOut;
-				end
 
 				if (testInterface.cpuSlaveInterface.functionComplete == 1) begin
 					break;
 				end
-				
-				//collect all invalidate messages
-				if (testInterface.busInterface.cpuCommandOut == BUS_INVALIDATE) begin
-					if (testInterface.busInterface.cpuCommandIn == BUS_INVALIDATE) begin
-						invalidated[testInterface.cpuMasterInterface.dataIn[CACHE_NUMBER_WIDTH - 1 : 0]] = 1;
-					end
+
+				if (testInterface.cacheInterface.cpuWriteState == 1 && testInterface.busInterface.cpuCommandOut == BUS_WRITEBACK) begin
+					writeBackStateIn = testInterface.cacheInterface.cpuStateIn;
 				end
 
+				if (testInterface.cpuMasterInterface.writeEnabled == 1) begin
+					writeBackStateOut = testInterface.cacheInterface.cpuStateOut;
+					writeBackAddress  = testInterface.cpuMasterInterface.address;
+					writeBackTag      = testInterface.cacheInterface.cpuTagOut;
+					writeBackIndex    = testInterface.cacheInterface.cpuIndex;
+
+					//collect data
+					writeBackData[testInterface.cpuMasterInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.cpuMasterInterface.dataOut;
+					cacheData[testInterface.cacheInterface.cpuOffset]                             = testInterface.cacheInterface.cpuDataOut;
+
+					//set flag
+					writeBackOccured = 1;
+				end				
 			end while (1);
 			
-			writeData = testInterface.cpuSlaveInterface.dataOut;
-			cacheData = testInterface.cacheInterface.cpuDataOut;
 
 			while (testInterface.cpuSlaveInterface.functionComplete != 0) begin
 				@(posedge testInterface.clock);
 			end
 		endtask : collect
 
-	endclass : SimpleCacheWriteCollectedTransaction
+	endclass : SimpleCacheWriteBackCollectedTransaction
 
-	class SimpleCacheWriteTestModel extends BaseTestModel#(
+	class SimpleCacheWriteBackTestModel extends BaseTestModel#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -194,37 +200,48 @@ package simpleWriteTestPackage;
 			) transaction
 		);
 			int errorCounter = 0;	
-			SimpleCacheWriteCollectedTransaction collectedTransaction;
+			SimpleCacheWriteBackCollectedTransaction collectedTransaction;
 
 			$cast(collectedTransaction, transaction);
 			
-			if ((collectedTransaction.stateOut == EXCLUSIVE || collectedTransaction.stateOut == MODIFIED) && collectedTransaction.invalidated != (1 << CACHE_ID)) begin
-				`uvm_error("UNNECESSARY_INVALIDATE_MESSAGES","")
-				errorCounter++;
+			if (collectedTransaction.writeBackOccured == 0) begin
+				return;
 			end
-			
-			if ((collectedTransaction.stateOut != EXCLUSIVE && collectedTransaction.stateOut != MODIFIED) && collectedTransaction.invalidated == (1 << CACHE_ID)) begin
-				`uvm_error("NO_INVALIDATE_MESSAGES", "")
+
+			if (collectedTransaction.writeBackStateIn != INVALID) begin
+				`uvm_error("INVALID_STATE_MISMATCH", "")
 				errorCounter++;
 			end
 
-			if (collectedTransaction.stateIn != MODIFIED) begin
-				`uvm_error("MODIFIED_STATE_MISMATCH", "");
+			if (collectedTransaction.writeBackStateOut != MODIFIED && collectedTransaction.writeBackStateOut != OWNED) begin
+				`uvm_error("WRITE_BACK_STATE_MISMATCH", "")
 				errorCounter++;
+			end
+
+			if (collectedTransaction.writeBackAddress[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH] != collectedTransaction.writeBackTag) begin
+				`uvm_error("TAG_MISMATCH", "")
+				errorCounter++;
+			end
+
+			if (collectedTransaction.writeBackAddress[OFFSET_WIDTH +: INDEX_WIDTH] != collectedTransaction.writeBackIndex) begin
+				`uvm_error("INDEX_MISMATCH", "")
+				errorCounter++;
+			end
+
+			for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
+				if (collectedTransaction.writeBackData[i] != collectedTransaction.cacheData[i]) begin
+					`uvm_error("DATA_MISMATCH", "")
+					errorCounter++;
+				end
 			end
 			
-			if (collectedTransaction.writeData != collectedTransaction.cacheData) begin
-				`uvm_error("DATA_MISMATCH", "")
-				errorCounter++;
-			end
 			if (errorCounter == 0) begin
-				`uvm_info("SIMPLE_CACHE_WRITE_TEST_MODEL::TEST_OK", "", UVM_LOW)
+				`uvm_info("TEST_OK", "", UVM_LOW);
 			end
-
 		endfunction : compare 
-	endclass : SimpleCacheWriteTestModel
+	endclass : SimpleCacheWriteBackTestModel
 
-	class SimpleCacheWriteTestItemFactory extends BaseTestItemFactory#(
+	class SimpleCacheWriteBackTestItemFactory extends BaseTestItemFactory#(
 		.ADDRESS_WITDH(ADDRESS_WITDH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
@@ -245,7 +262,7 @@ package simpleWriteTestPackage;
 			.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
 		) createCacheAccessTransaction();
 
-			return SimpleCacheWriteTransaction::type_id::create(.name("simpleCacheReadTransaction"));
+			return SimpleCacheWriteBackTransaction::type_id::create(.name("simpleCacheReadTransaction"));
 		endfunction : createCacheAccessTransaction
 
 		virtual function BaseCollectedCacheTransaction#(
@@ -258,7 +275,7 @@ package simpleWriteTestPackage;
 			.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
 			.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
 		) createCollectedCacheTransaction();
-			SimpleCacheWriteCollectedTransaction collectedCacheTransaction = new();
+			SimpleCacheWriteBackCollectedTransaction collectedCacheTransaction = new();
 
 			return collectedCacheTransaction;
 		endfunction : createCollectedCacheTransaction
@@ -273,14 +290,14 @@ package simpleWriteTestPackage;
 			.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
 			.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
 		) createTestModel();
-			SimpleCacheWriteTestModel testModel = new();
+			SimpleCacheWriteBackTestModel testModel = new();
 
 			return testModel;
 		endfunction : createTestModel
-	endclass : SimpleCacheWriteTestItemFactory
+	endclass : SimpleCacheWriteBackTestItemFactory
 
-	class SimpleCacheWriteTest extends uvm_test;
-		`uvm_component_utils(SimpleCacheWriteTest)
+	class SimpleCacheWriteBackTest extends uvm_test;
+		`uvm_component_utils(SimpleCacheWriteBackTest)
 
 		BaseCacheAccessEnvironment#(
 			.ADDRESS_WITDH(ADDRESS_WITDH),
@@ -295,7 +312,7 @@ package simpleWriteTestPackage;
 			.TEST_FACTORY_NAME(TEST_FACTORY_NAME)
 		) environment;
 
-		function new(string name = "SimpleCacheReadTest", uvm_component parent = null);
+		function new(string name = "SimpleCacheBackTest", uvm_component parent = null);
 			super.new(.name(name), .parent(parent));
 		endfunction : new
 
@@ -345,5 +362,5 @@ package simpleWriteTestPackage;
 			phase.drop_objection(this);
 		endtask : run_phase
 
-	endclass : SimpleCacheWriteTest
-endpackage : simpleWriteTestPackage
+	endclass : SimpleCacheWriteBackTest
+endpackage : simpleWriteBackTestPackage
