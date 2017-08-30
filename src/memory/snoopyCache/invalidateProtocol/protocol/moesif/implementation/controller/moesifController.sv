@@ -18,6 +18,7 @@ module MOESIFController#(
 	//cpu controller states
 	typedef enum logic[2 : 0] {
 		WAITING_FOR_REQUEST,
+		WRITING_BACK,
 		READING_BLOCK,
 		WRITING_BUS_INVALIDATE,
 		WRITE_DELAY,
@@ -26,14 +27,16 @@ module MOESIFController#(
 
 	CpuControllerState cpuControllerState;
 	logic[cacheInterface.OFFSET_WIDTH - 1 : 0] wordCounter;
-	
-	//this variable rpresents lock when needed
-	logic lock;
+	logic[cacheInterface.TAG_WIDTH - 1    : 0] masterTag;
 
 	assign cpuArbiterInterface.request = busInterface.cpuCommandOut != NONE ? 1 : 0;
 
+	//tag is different, if we need to write back (OWNED or MODIFIED) then it is tagOut otherwise it is tagIn
+	assign masterTag = cacheInterface.cpuStateOut == OWNED || cacheInterface.cpuStateOut == MODIFIED ? cacheInterface.cpuTagOut : cacheInterface.cpuTagIn;
+
 	assign cpuSlaveInterface.dataIn   = cacheInterface.cpuDataOut;
-	assign cpuMasterInterface.address = {cacheInterface.cpuTagIn, cacheInterface.cpuIndex, wordCounter};
+	assign cpuMasterInterface.address = {masterTag , cacheInterface.cpuIndex, wordCounter};
+	assign cpuMasterInterface.dataOut = cacheInterface.cpuDataOut;
 
 	assign cacheInterface.cpuTagIn  = cpuSlaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
 	assign cacheInterface.cpuIndex  = cpuSlaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
@@ -129,6 +132,48 @@ module MOESIFController#(
 		endcase
 	endtask : busInvalidate
 
+	//write back task
+	typedef enum logic[1 : 0] {
+		WRITE_BACK_BUS_GRANT_WAIT,
+		WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE,
+		WRITE_BACK_WRITING_STATE_TO_CACHE
+	} WriteBackState;
+	WriteBackState writeBackState;
+
+	task writeBack();
+		case (writeBackState)
+			WRITE_BACK_BUS_GRANT_WAIT: begin
+				if (cpuArbiterInterface.grant == 1) begin
+					cpuMasterInterface.writeEnabled <= 1;
+					writeBackState                  <= WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE;
+				end
+			end	
+			
+			WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE: begin
+				if (cpuMasterInterface.functionComplete == 1) begin
+					cpuMasterInterface.writeEnabled <= 0;
+					wordCounter                     <= wordCounter + 1;
+
+					if ((& wordCounter) == 1) begin
+						cacheInterface.cpuStateIn    <= INVALID;
+						cacheInterface.cpuWriteState <= 1;
+
+						writeBackState <= WRITE_BACK_WRITING_STATE_TO_CACHE;
+					end else begin
+						writeBackState <= WRITE_BACK_BUS_GRANT_WAIT;
+					end
+				end
+			end
+
+			WRITE_BACK_WRITING_STATE_TO_CACHE: begin
+				cacheInterface.cpuWriteState <= 0;
+
+				writeBackState     <= WRITE_BACK_BUS_GRANT_WAIT;
+				cpuControllerState <= WAITING_FOR_REQUEST;
+			end
+		endcase	
+	endtask : writeBack;
+
 	//reset task
 	task cpuControllerReset();
 			cpuControllerState         <= WAITING_FOR_REQUEST;
@@ -137,6 +182,7 @@ module MOESIFController#(
 			wordCounter                <= 0;
 			invalidated                <= 1 << CACHE_ID;
 			busInvalidateState         <= WAITING_FOR_INVALIDATES;
+			writeBackState             <= WRITE_BACK_BUS_GRANT_WAIT;
 	endtask : cpuControllerReset
 
 	//cpu controller 
@@ -170,12 +216,20 @@ module MOESIFController#(
 								accessEnable                       <= 1;
 							end
 						end else begin
-							cpuControllerState         <= READING_BLOCK;
-							busInterface.cpuCommandOut <= BUS_READ;
+							if (cacheInterface.cpuStateOut == MODIFIED || cacheInterface.cpuStateOut == OWNED) begin
+								cpuControllerState         <= WRITING_BACK;
+								busInterface.cpuCommandOut <= BUS_WRITEBACK;
+							end else begin
+								cpuControllerState         <= READING_BLOCK;
+								busInterface.cpuCommandOut <= BUS_READ;
+							end
 						end
 					end	
 				end
 				
+				WRITING_BACK: begin
+					writeBack();
+				end
 
 				//reading block if not hit
 				READING_BLOCK: begin
