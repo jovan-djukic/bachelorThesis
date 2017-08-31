@@ -81,7 +81,6 @@ package basicTestPackage;
 
 		uvm_analysis_port#(BasicCollectedItem) analysisPort;
 
-		BasicCollectedItem collectedItem;
 		function new(string name = "BasicMonitor", uvm_component parent);
 			super.new(.name(name), .parent(parent));
 		endfunction : new
@@ -90,20 +89,13 @@ package basicTestPackage;
 			super.build_phase(.phase(phase));
 
 			analysisPort  = new(.name("analysisPort"), .parent(this));
-			collectedItem = BasicCollectedItem::type_id::create(.name("collectedItem"));
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
-			resetDUT();
 			forever begin
 				collect();
-				analysisPort.write(collectedItem);
 			end
 		endtask : run_phase
-
-		virtual task resetDUT();
-			`uvm_info("BasicMonitor", "resetDUT method stub", UVM_LOW);
-		endtask : resetDUT
 
 		virtual task collect();
 			`uvm_info("BasicMonitor", "collect method stub", UVM_LOW);
