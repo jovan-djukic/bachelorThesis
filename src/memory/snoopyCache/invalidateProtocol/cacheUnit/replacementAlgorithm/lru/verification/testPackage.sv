@@ -192,7 +192,7 @@ package testPackage;
 
 		virtual task collect();
 			SetAssociativeLRUCollectedItem collectedItem;
-			$cast(collectedItem, super.collectedItem);
+			$cast(collectedItem, super.basicCollectedItem);
 
 			//wait for write to sync in
 			repeat (2) begin

@@ -1,6 +1,6 @@
 module TestBench();
 	import uvm_pkg::*;
-	import setAssociativeCacheUnitTestPackage::*;
+	import testPackage::*;
 
 	TestInterface#(
 		.TAG_WIDTH(TAG_WIDTH),
@@ -33,7 +33,7 @@ module TestBench();
 			.DATA_WIDTH(DATA_WIDTH),
 			.STATE_TYPE(STATE_TYPE),
 			.INVALID_STATE(INVALID_STATE)				
-		))::set(uvm_root::get(), "*", "TestInterface", testInterface);
-		run_test("CacheAccessTest");
+		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
+		run_test("CacheUnitTest");
 	end
 endmodule : TestBench

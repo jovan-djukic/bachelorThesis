@@ -9,7 +9,6 @@ package setAssociativeCacheUnitClassImplementationPackage;
 		type STATE_TYPE          = logic[1 : 0],
 		STATE_TYPE INVALID_STATE = 2'b0
 	);
-
 		localparam NUMBER_OF_SMALLER_CACHES = 1 << SET_ASSOCIATIVITY;
 		localparam NUMBER_OF_CACHE_LINES    = 1 << INDEX_WIDTH;
 		localparam NUMBER_OF_WORDS_PER_LINE	= 1 << OFFSET_WIDTH;
@@ -41,27 +40,36 @@ package setAssociativeCacheUnitClassImplementationPackage;
 			return 0;
 		endfunction : isHit
 
-		virtual function logic[SET_ASSOCIATIVITY - 1 : 0] getCacheNumber(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
+		virtual function logic[SET_ASSOCIATIVITY - 1 : 0] getCPUCacheNumber(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
 			for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 				if (tags[i][index] == tag && states[i][index] != INVALID_STATE) begin
 					return i;
 				end
 			end
 			return setAssociativeLRU.getReplacementCacheLine(.index(index));
-		endfunction : getCacheNumber
+		endfunction : getCPUCacheNumber
+
+		virtual function logic[SET_ASSOCIATIVITY - 1 : 0] getSnoopyCacheNumber(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
+			for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
+				if (tags[i][index] == tag && states[i][index] != INVALID_STATE) begin
+					return i;
+				end
+			end
+			return 0;
+		endfunction : getSnoopyCacheNumber
 
 		virtual function void writeTag(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag({TAG_WIDTH{1'bx}}));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCPUCacheNumber(.index(index), .tag({TAG_WIDTH{1'bx}}));
 			tags[cacheNumber][index] = tag;
 		endfunction : writeTag
 
 		virtual function void writeState(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag = {TAG_WIDTH{1'bx}}, STATE_TYPE state);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCPUCacheNumber(.index(index), .tag(tag));
 			states[cacheNumber][index] = state;
 		endfunction : writeState
 
 		virtual function void writeData(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag, logic[OFFSET_WIDTH - 1 : 0] offset, logic[DATA_WIDTH - 1 : 0] data);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCPUCacheNumber(.index(index), .tag(tag));
 			this.data[cacheNumber][index][offset] = data;
 		endfunction : writeData	
 
@@ -72,7 +80,7 @@ package setAssociativeCacheUnitClassImplementationPackage;
 		endfunction : writeDataToWholeLine
 
 		virtual function void access(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCPUCacheNumber(.index(index), .tag(tag));
 			setAssociativeLRU.access(.index(index), .line(cacheNumber));
 		endfunction : access
 
@@ -89,9 +97,8 @@ package setAssociativeCacheUnitClassImplementationPackage;
 		endfunction : getData 
 
 		virtual function void invalidate(logic[INDEX_WIDTH - 1 : 0] index, logic[TAG_WIDTH - 1 : 0] tag);
-			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCacheNumber(.index(index), .tag(tag));
+			logic[SET_ASSOCIATIVITY - 1 : 0] cacheNumber = this.getCPUCacheNumber(.index(index), .tag(tag));
 			setAssociativeLRU.invalidate(.index(index), .line(cacheNumber));
 		endfunction : invalidate
 	endclass : SetAssociativeCacheUnitClassImplementation
-
 endpackage : setAssociativeCacheUnitClassImplementationPackage

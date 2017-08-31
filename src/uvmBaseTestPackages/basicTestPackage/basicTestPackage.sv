@@ -80,6 +80,8 @@ package basicTestPackage;
 		`uvm_component_utils(BasicMonitor)
 
 		uvm_analysis_port#(BasicCollectedItem) analysisPort;
+	
+		protected BasicCollectedItem basicCollectedItem;
 
 		function new(string name = "BasicMonitor", uvm_component parent);
 			super.new(.name(name), .parent(parent));
@@ -88,14 +90,21 @@ package basicTestPackage;
 		virtual function void build_phase(uvm_phase phase);
 			super.build_phase(.phase(phase));
 
-			analysisPort  = new(.name("analysisPort"), .parent(this));
+			analysisPort       = new(.name("analysisPort"), .parent(this));
+			basicCollectedItem = BasicCollectedItem::type_id::create(.name("basicCollectedItem"));
 		endfunction : build_phase
 
 		virtual task run_phase(uvm_phase phase);
+			resetDUT();
 			forever begin
 				collect();
+				analysisPort.write(basicCollectedItem);
 			end
 		endtask : run_phase
+
+		virtual task resetDUT();
+			`uvm_info("BasicDriver", "resetDUT method stub", UVM_LOW)
+		endtask : resetDUT
 
 		virtual task collect();
 			`uvm_info("BasicMonitor", "collect method stub", UVM_LOW);
@@ -223,6 +232,13 @@ package basicTestPackage;
 			environment = BasicEnvironment::type_id::create(.name("environment"), .parent(this));
 		endfunction : build_phase
 		
+		virtual function void end_of_elaboration_phase(uvm_phase phase);
+			super.end_of_elaboration_phase(.phase(phase));
+
+			this.print();
+			factory.print();
+		endfunction : end_of_elaboration_phase
+
 		virtual task run_phase(uvm_phase phase);
 			BasicSequence#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT)) basicSequence = BasicSequence#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT))
 																																							 ::type_id

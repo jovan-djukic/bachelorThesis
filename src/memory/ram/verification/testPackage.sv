@@ -189,8 +189,6 @@ package testPackage;
 			.DATA_WIDTH(DATA_WIDTH)
 		) testInterface;
 
-		MemoryCollectedItem collectedItem;
-		
 		function new(string name = "MemoryMonitor", uvm_component parent);
 			super.new(name, parent);
 		endfunction : new 
@@ -208,7 +206,8 @@ package testPackage;
 		endtask : resetDUT
 			
 		virtual task collect();
-			$cast(collectedItem, super.collectedItem);
+			MemoryCollectedItem collectedItem;
+			$cast(collectedItem, super.basicCollectedItem);
 
 			while (testInterface.memoryInterface.functionComplete != 1) begin
 				@(posedge testInterface.clock);
