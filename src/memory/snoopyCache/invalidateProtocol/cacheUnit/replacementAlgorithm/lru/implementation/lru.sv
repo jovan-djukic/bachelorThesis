@@ -1,5 +1,5 @@
 /*
-	when reading replace line lru must not be edited, this is why we need to have a lock for such things
+	when reading replace line lru must not be edited, this is why we need to have a lock for such things, but this wont happen since we occupy the bus while reading it
 */
 module LRU(
   ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
