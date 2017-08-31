@@ -8,6 +8,16 @@ UVM_COMMAND  = $(VLOG) $(FLAGS) $(INCLUDES)
 #command for verificaton
 MODELSIM_VERIFICATION_COMMAND   = vsim -c bachelorThesis.TestBench -do "run -all"
 
+#uvm test packages
+UVM_BASE_TEST_PACKAGES_SOURCE_DIRECTORY = $(SRC)/uvmBaseTestPackages
+
+#basic uvm test package
+UVM_BASIC_TEST_PACKAGE_SOURCE_DIRECTORY = $(UVM_BASE_TEST_PACKAGES_SOURCE_DIRECTORY)/basicTestPackage
+UVM_BASIC_TEST_PACKAGE = $(UVM_BASIC_TEST_PACKAGE_SOURCE_DIRECTORY)/basicTestPackage.sv
+
+uvm_basic_test_package : $(UVM_BASIC_TEST_PACKAGE)
+	$(UVM_COMMAND) $? 
+
 #basic circuits
 BASIC_CIRCUITS_SOURCE_DIRECTORY	= $(SRC)/basicCircuits
 BASIC_CIRCUITS_IMPLEMENTATION		= $(BASIC_CIRCUITS_SOURCE_DIRECTORY)/*.sv
@@ -34,12 +44,14 @@ MEMORY_INCLUDES         = $(MEMORY_SOURCE_DIRECTORY)/*.sv
 #ram
 RAM_SOURCE_DIRECTORY = $(MEMORY_SOURCE_DIRECTORY)/ram
 RAM_IMPLEMENTATION   = $(RAM_SOURCE_DIRECTORY)/implementation/*.sv
-RAM_VERIFICATION     = $(RAM_SOURCE_DIRECTORY)/verification/*.sv
+RAM_VERIFICATION     = $(RAM_SOURCE_DIRECTORY)/verification/testInterface.sv \
+											 $(RAM_SOURCE_DIRECTORY)/verification/testPackage.sv \
+											 $(RAM_SOURCE_DIRECTORY)/verification/testBench.sv
 
 ram_implementation : $(MEMORY_INCLUDES) $(RAM_IMPLEMENTATION)
 	$(VLOG) $?
 	
-ram_verification : $(MEMORY_INCLUDES) $(RAM_IMPLEMENTATION) $(RAM_VERIFICATION)
+ram_verification : $(MEMORY_INCLUDES) $(RAM_IMPLEMENTATION) $(UVM_BASIC_TEST_PACKAGE) $(RAM_VERIFICATION)
 	$(UVM_COMMAND) $? && $(MODELSIM_VERIFICATION_COMMAND)
 
 #width adapter

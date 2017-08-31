@@ -3,7 +3,10 @@ interface TestInterface#(
 	int DATA_WIDTH 		= 32 
 )();
 
-	MemoryInterface#(ADDRESS_WIDTH, DATA_WIDTH) memoryInterface();
+	MemoryInterface#(
+		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+		.DATA_WIDTH(DATA_WIDTH)
+	) memoryInterface();
 	bit clock;
 
 endinterface : TestInterface

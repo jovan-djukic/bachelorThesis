@@ -1,10 +1,7 @@
-//DATA_WIDTH defines WORD size
 module RAM#(
 	int SIZE_IN_WORDS		 = 1024,
 	int DELAY						 = 4,
-	int COUNTER_WIDTH		 = DELAY < 2 ? 1 :
-												 DELAY < 4 ? 2 :
-												 DELAY < 8 ? 3 : 4,
+	int COUNTER_WIDTH		 = $clog2(DELAY),
 	string	INIT_FILE 	 = ""
 )(
 	MemoryInterface.slave memoryInterface,
@@ -25,7 +22,7 @@ module RAM#(
 	assign memoryInterface.functionComplete = counter == 0 ? 1 : 0;
 	
 	always_ff@(posedge clock) begin
-		counter	<= DELAY;
+		counter	<= DELAY - 1;
 		if (memoryInterface.address < SIZE_IN_WORDS) begin
 			if (memoryInterface.writeEnabled == 1) begin
 				memory[memoryInterface.address] <= memoryInterface.dataOut;	
