@@ -1,21 +1,56 @@
-module MOESIFController#(
+module CacheController#(
 	int CACHE_ID = 0
 )(
 	MemoryInterface.slave cpuSlaveInterface,
 	MemoryInterface.master cpuMasterInterface,
 	ReadMemoryInterface.slave snoopySlaveInterface,
 	CacheInterface.controller cacheInterface,
+	ProtocolInterface.controller protocolInterface,
 	BusInterface.controller busInterface,
 	ArbiterInterface.device cpuArbiterInterface,
 	ArbiterInterface.device snoopyArbiterInterface,
 	output logic accessEnable, invalidateEnable,
 	input logic clock, reset
 );
+	import busCommands::*;
 
-	import types::*;
+	//lock variable for conflict detection
+	logic lock;
+	always_comb begin
+		lock = 0;
+		if (cacheInterface.cpuTagIn == cacheInterface.snoopyTagIn && cacheInterface.cpuIndex == cacheInterface.snoopyIndex &&
+				cacheInterface.cpuHit == 1 && cacheInterface.snoopyHit == 1 &&
+				(cpuSlaveInterface.writeEnabled == 1 || busInterface.snoopyCommandIn == BUS_INVALIDATE)) begin
+			lock = 1;
+		end
+	end
 
-	//CPU_CONTROLLER_BEGIN
-	//cpu controller states
+	//cpu controller variables
+	logic[cacheInterface.OFFSET_WIDTH - 1 : 0] wordCounter;
+	logic[cacheInterface.TAG_WIDTH - 1    : 0] masterTag;
+	assign masterTag = protocolInterface.writeBackRequired == 1 ? cacheInterface.cpuTagOut : cacheInterface.cpuTagIn;
+
+	//cpu controller assigns and varibles
+	assign cpuSlaveInterface.dataIn   = cacheInterface.cpuDataOut;
+
+	//cpu controller cache interface assings
+	assign cacheInterface.cpuTagIn  = cpuSlaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
+	assign cacheInterface.cpuIndex  = cpuSlaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
+	assign cacheInterface.cpuOffset = cacheInterface.cpuHit == 1 ? cpuSlaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0] : wordCounter;
+	assign cacheInterface.cpuDataIn = cacheInterface.cpuHit == 1 ? cpuSlaveInterface.dataOut : cpuMasterInterface.dataIn;
+
+	//cpu controller arbiter assigns
+	assign cpuArbiterInterface.request = busInterface.cpuCommandOut != NONE ? 1 : 0;
+
+	//cpu controller master interface assigns
+	assign cpuMasterInterface.address = {masterTag , cacheInterface.cpuIndex, wordCounter};
+	assign cpuMasterInterface.dataOut = cacheInterface.cpuDataOut;
+
+	//protocol asigns
+	assign protocolInterface.cpuStateOut = cacheInterface.cpuStateOut;
+	assign protocolInterface.cpuRead     = cpuSlaveInterface.readEnabled;
+	assign protocolInterface.cpuWrite    = cpuSlaveInterface.writeEnabled;
+
 	typedef enum logic[2 : 0] {
 		WAITING_FOR_REQUEST,
 		WRITING_BACK,
@@ -24,24 +59,7 @@ module MOESIFController#(
 		WRITE_DELAY,
 		SERVE_REQUEST_FINISH
 	} CpuControllerState;
-
 	CpuControllerState cpuControllerState;
-	logic[cacheInterface.OFFSET_WIDTH - 1 : 0] wordCounter;
-	logic[cacheInterface.TAG_WIDTH - 1    : 0] masterTag;
-
-	assign cpuArbiterInterface.request = busInterface.cpuCommandOut != NONE ? 1 : 0;
-
-	//tag is different, if we need to write back (OWNED or MODIFIED) then it is tagOut otherwise it is tagIn
-	assign masterTag = cacheInterface.cpuStateOut == OWNED || cacheInterface.cpuStateOut == MODIFIED ? cacheInterface.cpuTagOut : cacheInterface.cpuTagIn;
-
-	assign cpuSlaveInterface.dataIn   = cacheInterface.cpuDataOut;
-	assign cpuMasterInterface.address = {masterTag , cacheInterface.cpuIndex, wordCounter};
-	assign cpuMasterInterface.dataOut = cacheInterface.cpuDataOut;
-
-	assign cacheInterface.cpuTagIn  = cpuSlaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
-	assign cacheInterface.cpuIndex  = cpuSlaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
-	assign cacheInterface.cpuOffset = cacheInterface.cpuHit == 1 ? cpuSlaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0] : wordCounter;
-	assign cacheInterface.cpuDataIn = cacheInterface.cpuHit == 1 ? cpuSlaveInterface.dataOut : cpuMasterInterface.dataIn;
 
 	//read block task
 	typedef enum logic[2 : 0] {
@@ -74,11 +92,7 @@ module MOESIFController#(
 				wordCounter                    <= wordCounter + 1;
 
 				if ((& wordCounter) == 1) begin
-					if (busInterface.sharedIn == 1) begin
-						cacheInterface.cpuStateIn <= FORWARD;
-					end else begin
-						cacheInterface.cpuStateIn <= EXCLUSIVE;
-					end
+					cacheInterface.cpuStateIn <= protocolInterface.cpuStateIn;
 
 					cacheInterface.cpuWriteTag   <= 1;
 					cacheInterface.cpuWriteState <= 1;
@@ -102,14 +116,14 @@ module MOESIFController#(
 	//bus invalidate task
 	logic[busInterface.NUMBER_OF_CACHES - 1 : 0] invalidated;
 	typedef enum logic {
-		WAITING_FOR_INVALIDATES,
-		WRITING_MODIFIED_STATE
+		INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS,
+		INVALIDATE_WRITING_STATE
 	} BusInvalidateState;
 	BusInvalidateState busInvalidateState;
 
 	task busInvalidate();
 		case (busInvalidateState)
-			WAITING_FOR_INVALIDATES: begin
+			INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS: begin
 				if (cpuArbiterInterface.grant == 1) begin
 					if (busInterface.cpuCommandIn == BUS_INVALIDATE) begin
 						invalidated[busInterface.cacheNumberIn] <= 1;
@@ -117,16 +131,16 @@ module MOESIFController#(
 				end
 
 				if ((& invalidated) == 1) begin
-					cacheInterface.cpuStateIn    <= MODIFIED;
+					cacheInterface.cpuStateIn    <= protocolInterface.cpuStateIn;
 					cacheInterface.cpuWriteState <= 1;
-					busInvalidateState           <= WRITING_MODIFIED_STATE;
+					busInvalidateState           <= INVALIDATE_WRITING_STATE;
 				end
 			end
 
-			WRITING_MODIFIED_STATE: begin
+			INVALIDATE_WRITING_STATE: begin
 				invalidated                  <= 1 << CACHE_ID;
 				cacheInterface.cpuWriteState <= 0;
-				busInvalidateState           <= WAITING_FOR_INVALIDATES;
+				busInvalidateState           <= INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS;
 				cpuControllerState           <= WAITING_FOR_REQUEST;
 			end
 		endcase
@@ -155,7 +169,7 @@ module MOESIFController#(
 					wordCounter                     <= wordCounter + 1;
 
 					if ((& wordCounter) == 1) begin
-						cacheInterface.cpuStateIn    <= INVALID;
+						cacheInterface.cpuStateIn    <= cacheInterface.INVALID_STATE;
 						cacheInterface.cpuWriteState <= 1;
 
 						writeBackState <= WRITE_BACK_WRITING_STATE_TO_CACHE;
@@ -181,7 +195,7 @@ module MOESIFController#(
 			readingBlockState          <= READ_BUS_GRANT_WAIT;
 			wordCounter                <= 0;
 			invalidated                <= 1 << CACHE_ID;
-			busInvalidateState         <= WAITING_FOR_INVALIDATES;
+			busInvalidateState         <= INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS;
 			writeBackState             <= WRITE_BACK_BUS_GRANT_WAIT;
 	endtask : cpuControllerReset
 
@@ -189,7 +203,7 @@ module MOESIFController#(
 	always_ff @(posedge clock, reset) begin
 		if (reset == 1) begin
 			cpuControllerReset();
-		end else begin
+		end else if (lock != 1) begin
 			case (cpuControllerState)
 				//waiting for read or write request
 				WAITING_FOR_REQUEST: begin
@@ -199,13 +213,13 @@ module MOESIFController#(
 						//if hit serve request, else read block
 						if (cacheInterface.cpuHit == 1) begin
 							if (cpuSlaveInterface.writeEnabled == 1) begin
-								if (cacheInterface.cpuStateOut != EXCLUSIVE && cacheInterface.cpuStateOut != MODIFIED) begin
+								if (protocolInterface.invalidateRequired == 1) begin
 									//invalidate on the bus
 									cpuControllerState         <= WRITING_BUS_INVALIDATE;
 									busInterface.cpuCommandOut <= BUS_INVALIDATE;
 								end else begin
 									//write MODIFIED even if it is MODIFIED already, no harm
-									cacheInterface.cpuStateIn          <= MODIFIED;
+									cacheInterface.cpuStateIn          <= protocolInterface.cpuStateIn;
 									cacheInterface.cpuWriteState       <= 1;
 									cacheInterface.cpuWriteData        <= 1;
 									cpuControllerState                 <= WRITE_DELAY;
@@ -216,7 +230,7 @@ module MOESIFController#(
 								accessEnable                       <= 1;
 							end
 						end else begin
-							if (cacheInterface.cpuStateOut == MODIFIED || cacheInterface.cpuStateOut == OWNED) begin
+							if (protocolInterface.writeBackRequired == 1) begin
 								cpuControllerState         <= WRITING_BACK;
 								busInterface.cpuCommandOut <= BUS_WRITEBACK;
 							end else begin
@@ -250,10 +264,12 @@ module MOESIFController#(
 				end
 
 				SERVE_REQUEST_FINISH: begin
-					//disable these always
-					cpuSlaveInterface.functionComplete <= 0;
-					accessEnable                       <= 0;
-					cpuControllerState                 <= WAITING_FOR_REQUEST;
+					if (cpuSlaveInterface.readEnabled == 0 && cpuSlaveInterface.writeEnabled == 0) begin
+						//disable these always
+						cpuSlaveInterface.functionComplete <= 0;
+						accessEnable                       <= 0;
+						cpuControllerState                 <= WAITING_FOR_REQUEST;
+					end
 				end
 			endcase
 		end
@@ -261,35 +277,56 @@ module MOESIFController#(
 	//CPU_CONTROLLER_END
 
 	//SNOPY_CONTROLLER_BEGIN
-	assign busInterface.sharedOut          =  cacheInterface.snoopyStateOut != INVALID && busInterface.snoopyCommandIn != NONE ? 1 : 0;
-	assign busInterface.forwardOut         =  cacheInterface.snoopyStateOut == FORWARD && busInterface.snoopyCommandIn != NONE ? 1 : 0;
-	assign snoopyArbiterInterface.request  =  busInterface.sharedOut;
-	assign snoopySlaveInterface.dataIn     =  cacheInterface.snoopyDataOut;
-		
 	assign cacheInterface.snoopyTagIn  = snoopySlaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
 	assign cacheInterface.snoopyIndex  = snoopySlaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
 	assign cacheInterface.snoopyOffset = snoopySlaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0];
+
+	assign snoopyArbiterInterface.request = cacheInterface.snoopyHit;
+
+	assign snoopySlaveInterface.dataIn = cacheInterface.snoopyDataOut;
+		
+	assign protocolInterface.snoopyStateOut   = cacheInterface.snoopyStateOut;
+	assign protocolInterface.snoopyCommandOut = busInterface.snoopyCommandOut;
+
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
 		case (busInterface.snoopyCommandIn) 
 			BUS_READ: begin
-				if (cacheInterface.snoopyHit == 1) begin
+				if (lock != 1 || cpuControllerState == WAITING_FOR_REQUEST || cpuControllerState == WRITING_BUS_INVALIDATE) begin
+					if (cacheInterface.snoopyHit == 1) begin
+						cacheInterface.snoopyWriteState <= 0;
+						if (cacheInterface.snoopyStateOut != protocolInterface.snoopyStateIn) begin
+							cacheInterface.snoopyStateIn    <= protocolInterface.snoopyStateIn;
+							cacheInterface.snoopyWriteState <= 1;
+						end					
+
+						if (snoopyArbiterInterface.grant == 1) begin
+							if (snoopySlaveInterface.readEnabled == 1) begin
+								snoopySlaveInterface.functionComplete <= 1;
+							end else begin
+								snoopySlaveInterface.functionComplete <= 0;
+							end
+						end
+					end
+				end
+			end
+
+			BUS_INVALIDATE: begin
+				if (lock != 1 || cpuControllerState == WAITING_FOR_REQUEST) begin
+					busInterface.snoopyCommandOut   <= BUS_INVALIDATE;
+					cacheInterface.snoopyStateIn    <= cacheInterface.INVALID_STATE;
 					cacheInterface.snoopyWriteState <= 0;
-					if (cacheInterface.snoopyStateOut != SHARED) begin
-						cacheInterface.snoopyStateIn    <= SHARED;
-						cacheInterface.snoopyWriteState <= 1;
-					end					
 
 					if (snoopyArbiterInterface.grant == 1) begin
-						if (snoopySlaveInterface.readEnabled == 1) begin
-							snoopySlaveInterface.functionComplete <= 1;
-						end else begin
-							snoopySlaveInterface.functionComplete <= 0;
-						end
+						cacheInterface.snoopyWriteState <= 1;
+					end 
+				end else if (lock == 1) begin
+					if (cpuControllerState == WRITING_BUS_INVALIDATE || cpuControllerState == WRITING_BACK) begin
+						cpuControllerState <= WAITING_FOR_REQUEST;
 					end
 				end
 			end
 		endcase
 	end
 	//SNOPY_CONTROLLER_END
-endmodule : MOESIFController
+endmodule : CacheController

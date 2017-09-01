@@ -1,26 +1,29 @@
 module TestBench();
 	
 	import uvm_pkg::*;
-	import baseTestPackage::*;
-	import simpleReadTestPackage::*;
-	import types::*;
+	import testPackage::*;
 
 	TestInterface#(
-		.ADDRESS_WITDH(ADDRESS_WITDH),
+		.ADDRESS_WIDTH(ADDRESS_WIDTH),
 		.DATA_WIDTH(DATA_WIDTH),
 		.TAG_WIDTH(TAG_WIDTH),
 		.INDEX_WIDTH(INDEX_WIDTH),
 		.OFFSET_WIDTH(OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
+		.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)
 	) testInterface();
 
 	always #5 testInterface.clock = ~testInterface.clock;
 
-	MOESIFController moesifController(
+	CacheController cacheController(
 		.cpuSlaveInterface(testInterface.cpuSlaveInterface),
 		.cpuMasterInterface(testInterface.cpuMasterInterface),
 		.snoopySlaveInterface(testInterface.snoopySlaveInterface),
 		.cacheInterface(testInterface.cacheInterface),
+		.protocolInterface(testInterface.protocolInterface),
 		.busInterface(testInterface.busInterface),
 		.cpuArbiterInterface(testInterface.cpuArbiterInterface),
 		.snoopyArbiterInterface(testInterface.snoopyArbiterInterface),
@@ -31,7 +34,7 @@ module TestBench();
 	);
 
 	SetAssociativeCacheUnit#(
-		.STATE_TYPE(CacheLineState)
+		.STATE_TYPE(STATE_TYPE)
 	) setAssociativeCacheUnit(
 		.cacheInterface(testInterface.cacheInterface),
 		.accessEnable(testInterface.accessEnable),
@@ -40,27 +43,26 @@ module TestBench();
 		.reset(testInterface.reset)
 	);
 
+
+	//these two are needed because protocl is combo logic
+	assign testInterface.protocolInterface.writeBackRequired = testInterface.protocolInterface.cpuStateOut == STATE_0 ? 0 : 1;
+	assign testInterface.protocolInterface.cpuStateIn        = STATE_1;
+
 	initial begin
-		automatic SimpleCacheReadTestItemFactory testFactory = new();
 			
 		uvm_config_db#(virtual TestInterface#(
-			.ADDRESS_WITDH(ADDRESS_WITDH),
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.TAG_WIDTH(TAG_WIDTH),
 			.INDEX_WIDTH(INDEX_WIDTH),
 			.OFFSET_WIDTH(OFFSET_WIDTH),
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		))::set(uvm_root::get(), "*", TEST_INTERFACE_NAME, testInterface);
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+			.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
+			.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH),
+			.STATE_TYPE(STATE_TYPE),
+			.INVALID_STATE(INVALID_STATE)
+		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
 
-		uvm_config_db#(BaseTestItemFactory#(
-			.ADDRESS_WITDH(ADDRESS_WITDH),
-			.DATA_WIDTH(DATA_WIDTH),
-			.TAG_WIDTH(TAG_WIDTH),
-			.INDEX_WIDTH(INDEX_WIDTH),
-			.OFFSET_WIDTH(OFFSET_WIDTH),
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
-		))::set(uvm_root::get(), "*", TEST_FACTORY_NAME, testFactory);
-
-		run_test("SimpleCacheReadTest");
+		run_test("ReadTest");
 	end
 endmodule : TestBench

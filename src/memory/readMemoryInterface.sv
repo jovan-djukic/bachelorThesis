@@ -1,9 +1,9 @@
 interface ReadMemoryInterface#(
-	int ADDRESS_WITDH = 32,
+	int ADDRESS_WIDTH = 32,
 	int DATA_WIDTH    = 32
 )();
 
-	logic[ADDRESS_WITDH - 1 : 0] address;
+	logic[ADDRESS_WIDTH - 1 : 0] address;
 	logic[DATA_WIDTH - 1    : 0] dataIn;
 	logic 											 readEnabled, functionComplete;
 
