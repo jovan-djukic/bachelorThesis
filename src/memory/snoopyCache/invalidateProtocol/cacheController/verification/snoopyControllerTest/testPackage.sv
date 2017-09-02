@@ -2,7 +2,7 @@ package testPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;
-	import busCommands::*;
+	import commands::*;
 
 	typedef enum logic[1 : 0] {
 		INVALID,
@@ -28,21 +28,21 @@ package testPackage;
 	localparam CACHE_STATE_SET_LENGTH                             = 2;
 	localparam STATE_TYPE CACHE_STATE_SET[CACHE_STATE_SET_LENGTH] = {VALID, DIRTY};
 	localparam BUS_COMMAND_SET_LENGTH                             = 2;
-	localparam BusCommand BUS_COMMAND_SET[BUS_COMMAND_SET_LENGTH] = {BUS_READ, BUS_INVALIDATE};
+	localparam Command BUS_COMMAND_SET[BUS_COMMAND_SET_LENGTH]    = {BUS_READ, BUS_INVALIDATE};
 
 	class SnoopyControllerSequenceItem extends BasicSequenceItem;
 		bit[TAG_WIDTH - 1   : 0] tag;
 		bit[INDEX_WIDTH - 1 : 0] index;
 		bit[DATA_WIDTH - 1  : 0] cacheData;
 		STATE_TYPE							 cacheState;
-		BusCommand							 busCommand;
+		Command							 		 busCommand;
 
 		`uvm_object_utils_begin(SnoopyControllerSequenceItem)
 			`uvm_field_int(tag, UVM_ALL_ON)
 			`uvm_field_int(index, UVM_ALL_ON)
 			`uvm_field_int(cacheData, UVM_ALL_ON)
 			`uvm_field_enum(STATE_TYPE, cacheState, UVM_ALL_ON)
-			`uvm_field_enum(BusCommand, busCommand, UVM_ALL_ON)
+			`uvm_field_enum(Command, busCommand, UVM_ALL_ON)
 		`uvm_object_utils_end
 
 		function new(string name = "SnoopyControllerSequenceItem");
@@ -152,7 +152,7 @@ package testPackage;
 				testInterface.cacheInterface.cpuIndex      = {INDEX_WIDTH{1'bz}};
 			end
 
-			testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
+			testInterface.commandInterface.snoopyCommandIn = sequenceItem.busCommand;
 			@(posedge testInterface.clock);
 
 			case (sequenceItem.busCommand) 
@@ -169,17 +169,17 @@ package testPackage;
 					end
 
 					testInterface.snoopyArbiterInterface.grant = 0;
-					testInterface.busInterface.snoopyCommandIn = NONE;
+					testInterface.commandInterface.snoopyCommandIn = NONE;
 				end
 
 				BUS_INVALIDATE: begin
 
-					wait (testInterface.busInterface.snoopyCommandOut == BUS_INVALIDATE);
+					wait (testInterface.commandInterface.snoopyCommandOut == BUS_INVALIDATE);
 					testInterface.snoopyArbiterInterface.grant = 1;
 					wait (testInterface.snoopyArbiterInterface.request == 0);
 					testInterface.snoopyArbiterInterface.grant = 0;
 					
-					testInterface.busInterface.snoopyCommandIn = NONE;
+					testInterface.commandInterface.snoopyCommandIn = NONE;
 				end
 			endcase
 
@@ -190,7 +190,7 @@ package testPackage;
 
 	class SnoopyControllerCollectedItem extends BasicCollectedItem;
 		bit[DATA_WIDTH - 1 : 0] readData[NUMBER_OF_WORDS_PER_LINE], cachedData[NUMBER_OF_WORDS_PER_LINE];
-		BusCommand              busCommand, protocolCommand;
+		Command              		busCommand, protocolCommand;
 		STATE_TYPE              snoopyStateOut, snoopyStateIn, protocolStateOut, protocolStateIn;
 		int											cacheNumber;
 		bit 										invalidateEnable;
@@ -198,8 +198,8 @@ package testPackage;
 		`uvm_object_utils_begin(SnoopyControllerCollectedItem)
 			`uvm_field_sarray_int(readData, UVM_ALL_ON)
 			`uvm_field_sarray_int(cachedData, UVM_ALL_ON)
-			`uvm_field_enum(BusCommand, busCommand, UVM_ALL_ON)
-			`uvm_field_enum(BusCommand, protocolCommand, UVM_ALL_ON)
+			`uvm_field_enum(Command, busCommand, UVM_ALL_ON)
+			`uvm_field_enum(Command, protocolCommand, UVM_ALL_ON)
 			`uvm_field_enum(STATE_TYPE, snoopyStateOut, UVM_ALL_ON)
 			`uvm_field_enum(STATE_TYPE, snoopyStateIn, UVM_ALL_ON)
 			`uvm_field_enum(STATE_TYPE, protocolStateOut, UVM_ALL_ON)
@@ -298,10 +298,10 @@ package testPackage;
 				//testInterface.cacheInterface.cpuIndex      = {INDEX_WIDTH{1'bz}};
 			end
 
-			//testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
+			//testInterface.commandInterface.snoopyCommandIn = sequenceItem.busCommand;
 			@(posedge testInterface.clock);
 
-			collectedItem.busCommand      = testInterface.busInterface.snoopyCommandIn;
+			collectedItem.busCommand      = testInterface.commandInterface.snoopyCommandIn;
 			collectedItem.protocolCommand = testInterface.protocolInterface.snoopyCommandIn;
 
 			collectedItem.snoopyStateOut   = testInterface.cacheInterface.snoopyStateOut;
@@ -309,7 +309,7 @@ package testPackage;
 			collectedItem.protocolStateOut = testInterface.protocolInterface.snoopyStateOut;
 			collectedItem.protocolStateIn  = testInterface.protocolInterface.snoopyStateIn;
 
-			case (testInterface.busInterface.snoopyCommandIn) 
+			case (testInterface.commandInterface.snoopyCommandIn) 
 				BUS_READ: begin
 					wait (testInterface.snoopyArbiterInterface.request == 1);
 					//testInterface.snoopyArbiterInterface.grant = 1;	
@@ -326,13 +326,13 @@ package testPackage;
 					end
 
 					//testInterface.snoopyArbiterInterface.grant = 0;
-					//testInterface.busInterface.snoopyCommandIn = NONE;
+					//testInterface.commandInterface.snoopyCommandIn = NONE;
 				end
 
 				BUS_INVALIDATE: begin
-					wait (testInterface.busInterface.snoopyCommandOut == BUS_INVALIDATE);
+					wait (testInterface.commandInterface.snoopyCommandOut == BUS_INVALIDATE);
 					//testInterface.snoopyArbiterInterface.grant = 1;
-					collectedItem.cacheNumber = testInterface.busInterface.cacheNumberOut;
+					collectedItem.cacheNumber = testInterface.commandInterface.cacheNumberOut;
 					wait (testInterface.cacheInterface.snoopyWriteState == 1);
 
 					collectedItem.invalidateEnable = testInterface.invalidateEnable;
@@ -340,7 +340,7 @@ package testPackage;
 					wait (testInterface.snoopyArbiterInterface.request == 0);
 					//testInterface.snoopyArbiterInterface.grant = 0;
 
-					//testInterface.busInterface.snoopyCommandIn = NONE;
+					//testInterface.commandInterface.snoopyCommandIn = NONE;
 				end
 			endcase
 

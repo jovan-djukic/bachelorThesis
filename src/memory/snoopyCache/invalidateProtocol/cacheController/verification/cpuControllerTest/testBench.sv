@@ -1,7 +1,7 @@
 module TestBench();
-	
 	import uvm_pkg::*;
 	import testPackage::*;
+	import commands::*;
 
 	TestInterface#(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
@@ -24,7 +24,7 @@ module TestBench();
 		.snoopySlaveInterface(testInterface.snoopySlaveInterface),
 		.cacheInterface(testInterface.cacheInterface),
 		.protocolInterface(testInterface.protocolInterface),
-		.busInterface(testInterface.busInterface),
+		.commandInterface(testInterface.commandInterface),
 		.cpuArbiterInterface(testInterface.cpuArbiterInterface),
 		.snoopyArbiterInterface(testInterface.snoopyArbiterInterface),
 		.accessEnable(testInterface.accessEnable),

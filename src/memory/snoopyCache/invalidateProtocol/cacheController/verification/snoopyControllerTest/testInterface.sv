@@ -35,10 +35,10 @@ interface TestInterface#(
 		.INVALID_STATE(INVALID_STATE)
 	) cacheInterface();
 
-	BusInterface#(
+	CommandInterface#(
 		.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
 		.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH)
-	) busInterface();
+	) commandInterface();
 
 	ArbiterInterface cpuArbiterInterface(), snoopyArbiterInterface();
 

@@ -2,7 +2,7 @@ package testPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;
-	import busCommands::*;
+	import commands::*;
 
 	typedef enum logic[1 : 0] {
 		INVALID,
@@ -136,11 +136,11 @@ package testPackage;
 					testInterface.cpuMasterInterface.functionComplete = 0;
 				end
 
-				if (testInterface.busInterface.cpuCommandOut == BUS_INVALIDATE) begin
+				if (testInterface.commandInterface.cpuCommandOut == BUS_INVALIDATE) begin
 					for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
 						if (i != CACHE_ID) begin
-							testInterface.busInterface.cpuCommandIn  = BUS_INVALIDATE;
-							testInterface.busInterface.cacheNumberIn = i;
+							testInterface.commandInterface.cpuCommandIn  = BUS_INVALIDATE;
+							testInterface.commandInterface.cacheNumberIn = i;
 
 							repeat (2) begin
 								@(posedge testInterface.clock);
@@ -148,8 +148,8 @@ package testPackage;
 						end
 					end
 
-					testInterface.busInterface.cpuCommandIn  = NONE;
-					testInterface.busInterface.cacheNumberIn = 0;
+					testInterface.commandInterface.cpuCommandIn  = NONE;
+					testInterface.commandInterface.cacheNumberIn = 0;
 				end
 			end while (1);
 
@@ -324,7 +324,7 @@ package testPackage;
 					wait (testInterface.cpuMasterInterface.writeEnabled == 0);
 				end
 
-				if (testInterface.busInterface.cpuCommandOut == BUS_INVALIDATE) begin
+				if (testInterface.commandInterface.cpuCommandOut == BUS_INVALIDATE) begin
 					collectedItem.invalidateRequired = 1;
 					for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
 						if (i != CACHE_ID) begin

@@ -1,12 +1,12 @@
 interface ProtocolInterface#(
 	type STATE_TYPE = logic[1 : 0]
 )();
-	import busCommands::*;
+	import commands::*;
 
 	logic cpuRead, cpuWrite;
 	logic writeBackRequired, invalidateRequired;
 	STATE_TYPE cpuStateIn, cpuStateOut, snoopyStateIn, snoopyStateOut;
-	BusCommand snoopyCommandIn;
+	Command snoopyCommandIn;
 
 	modport controller(
 		input cpuStateIn, writeBackRequired, invalidateRequired, snoopyStateIn,
