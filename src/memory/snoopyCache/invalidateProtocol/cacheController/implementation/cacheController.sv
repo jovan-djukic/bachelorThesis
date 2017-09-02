@@ -290,6 +290,7 @@ module CacheController#(
 
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
+		busInterface.snoopyCommandOut <= NONE;
 		case (busInterface.snoopyCommandIn) 
 			BUS_READ: begin
 				if (lock != 1 || cpuControllerState == WAITING_FOR_REQUEST || cpuControllerState == WRITING_BUS_INVALIDATE) begin
@@ -316,9 +317,11 @@ module CacheController#(
 					busInterface.snoopyCommandOut   <= BUS_INVALIDATE;
 					cacheInterface.snoopyStateIn    <= cacheInterface.INVALID_STATE;
 					cacheInterface.snoopyWriteState <= 0;
+					invalidateEnable                <= 0;
 
 					if (snoopyArbiterInterface.grant == 1) begin
 						cacheInterface.snoopyWriteState <= 1;
+						invalidateEnable                <= 1;
 					end 
 				end else if (lock == 1) begin
 					if (cpuControllerState == WRITING_BUS_INVALIDATE || cpuControllerState == WRITING_BACK) begin

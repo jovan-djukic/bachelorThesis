@@ -1,4 +1,4 @@
-//resetthese are adjusted index and tag widths, not originals
+//these are adjusted index and tag widths, not originals
 interface CacheInterface#(
 	int TAG_WIDTH            = 6,
 	int INDEX_WIDTH          = 6,
