@@ -45,8 +45,33 @@ module TestBench();
 
 
 	//these two are needed because protocl is combo logic
-	assign testInterface.protocolInterface.writeBackRequired = testInterface.protocolInterface.cpuStateOut == STATE_0 ? 0 : 1;
-	assign testInterface.protocolInterface.cpuStateIn        = STATE_1;
+	assign testInterface.protocolInterface.writeBackRequired  = testInterface.protocolInterface.cpuStateOut == DIRTY ? 1 : 0;
+	assign testInterface.protocolInterface.invalidateRequired = testInterface.protocolInterface.cpuStateOut == VALID ? 1 : 0;
+
+	always_comb begin
+		testInterface.protocolInterface.cpuStateIn = INVALID;
+		case (testInterface.protocolInterface.cpuStateOut)
+			INVALID: begin
+				if (testInterface.protocolInterface.cpuRead == 1 || testInterface.protocolInterface.cpuWrite == 1) begin
+					testInterface.protocolInterface.cpuStateIn = VALID;				
+				end 		
+			end
+
+			VALID: begin
+				if (testInterface.protocolInterface.cpuRead == 1) begin
+					testInterface.protocolInterface.cpuStateIn = VALID;				
+				end else if (testInterface.protocolInterface.cpuWrite == 1) begin
+					testInterface.protocolInterface.cpuStateIn = DIRTY;				
+				end
+			end
+
+			DIRTY: begin
+				if (testInterface.protocolInterface.cpuRead == 1 || testInterface.protocolInterface.cpuWrite == 1) begin
+					testInterface.protocolInterface.cpuStateIn = DIRTY;				
+				end 		
+			end
+		endcase	
+	end
 
 	initial begin
 			
@@ -63,6 +88,6 @@ module TestBench();
 			.INVALID_STATE(INVALID_STATE)
 		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
 
-		run_test("ReadTest");
+		run_test("CPUControllerTest");
 	end
 endmodule : TestBench
