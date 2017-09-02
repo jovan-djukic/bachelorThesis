@@ -10,24 +10,24 @@ package testPackage;
 		DIRTY
 	} CacheLineState;
 
-	localparam ADDRESS_WIDTH            = 16;
-	localparam DATA_WIDTH               = 16;
-	localparam TAG_WIDTH                = 8;
-	localparam INDEX_WIDTH              = 4;
-	localparam OFFSET_WIDTH             = 4;
-	localparam SET_ASSOCIATIVITY        = 2;
-	localparam NUMBER_OF_CACHES         = 4;
+	localparam ADDRESS_WIDTH            = 32;
+	localparam DATA_WIDTH               = 32;
+	localparam TAG_WIDTH                = 16;
+	localparam INDEX_WIDTH              = 8;
+	localparam OFFSET_WIDTH             = 8;
+	localparam SET_ASSOCIATIVITY        = 4;
+	localparam NUMBER_OF_CACHES         = 8;
 	localparam CACHE_NUMBER_WIDTH       = $clog2(NUMBER_OF_CACHES);
-	localparam CACHE_ID								  = 0;
+	localparam CACHE_ID								  = 5;
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
 	localparam SEQUENCE_ITEM_COUNT      = 1000;
 	localparam TEST_INTERFACE           = "TestInterface";
 
-	localparam NUMBER_OF_WORDS_PER_LINE = 1 << OFFSET_WIDTH;
-	localparam CACHE_STATE_SET_LENGTH = 2;
-	localparam STATE_TYPE CACHE_STATE_SET[CACHE_STATE_SET_LENGTH] = {VALID, DATA_WIDTH};
-	localparam BUS_COMMAND_SET_LENGTH = 2;
+	localparam NUMBER_OF_WORDS_PER_LINE                           = 1 << OFFSET_WIDTH;
+	localparam CACHE_STATE_SET_LENGTH                             = 2;
+	localparam STATE_TYPE CACHE_STATE_SET[CACHE_STATE_SET_LENGTH] = {VALID, DIRTY};
+	localparam BUS_COMMAND_SET_LENGTH                             = 2;
 	localparam BusCommand BUS_COMMAND_SET[BUS_COMMAND_SET_LENGTH] = {BUS_READ, BUS_INVALIDATE};
 
 	class SnoopyControllerSequenceItem extends BasicSequenceItem;
@@ -113,7 +113,6 @@ package testPackage;
 			$cast(sequenceItem, req);
 
 			testInterface.snoopySlaveInterface.address = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
-			testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
 			@(posedge testInterface.clock);
 
 			//if not hit write data to cache
@@ -131,6 +130,10 @@ package testPackage;
 					repeat (2) begin
 						@(posedge testInterface.clock);
 					end
+
+					testInterface.cacheInterface.cpuOffset    = {OFFSET_WIDTH{1'bz}};
+					testInterface.cacheInterface.cpuDataIn    = {DATA_WIDTH{1'bz}};
+					testInterface.cacheInterface.cpuWriteData = 1'bz;
 				end
 
 				testInterface.cacheInterface.cpuWriteState = 1;
@@ -148,6 +151,9 @@ package testPackage;
 				testInterface.cacheInterface.cpuTagIn      = {TAG_WIDTH{1'bz}};
 				testInterface.cacheInterface.cpuIndex      = {INDEX_WIDTH{1'bz}};
 			end
+
+			testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
+			@(posedge testInterface.clock);
 
 			case (sequenceItem.busCommand) 
 				BUS_READ: begin
@@ -169,15 +175,16 @@ package testPackage;
 				BUS_INVALIDATE: begin
 
 					wait (testInterface.busInterface.snoopyCommandOut == BUS_INVALIDATE);
-					testInterface.cpuArbiterInterface.grant = 1;
-					wait (testInterface.cpuArbiterInterface.request == 0);
-					testInterface.cpuArbiterInterface.grant = 0;
+					testInterface.snoopyArbiterInterface.grant = 1;
+					wait (testInterface.snoopyArbiterInterface.request == 0);
+					testInterface.snoopyArbiterInterface.grant = 0;
 					
 					testInterface.busInterface.snoopyCommandIn = NONE;
 				end
 			endcase
 
 			testInterface.snoopySlaveInterface.address = {ADDRESS_WIDTH{1'bz}};
+			@(posedge testInterface.clock);
 		endtask : drive
 	endclass : SnoopyControllerDriver
 
@@ -251,7 +258,6 @@ package testPackage;
 			$cast(collectedItem, super.basicCollectedItem);
 			
 			//testInterface.snoopySlaveInterface.address = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
-			//testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
 
 			@(posedge testInterface.clock);
 
@@ -270,6 +276,10 @@ package testPackage;
 					repeat (2) begin
 						@(posedge testInterface.clock);
 					end
+
+					//testInterface.cacheInterface.cpuOffset    = {OFFSET_WIDTH{1'bz}};
+					//testInterface.cacheInterface.cpuDataIn    = {DATA_WIDTH{1'bz}};
+					//testInterface.cacheInterface.cpuWriteData = 1'bz;
 				end
 
 				//testInterface.cacheInterface.cpuWriteState = 1;
@@ -288,8 +298,16 @@ package testPackage;
 				//testInterface.cacheInterface.cpuIndex      = {INDEX_WIDTH{1'bz}};
 			end
 
+			//testInterface.busInterface.snoopyCommandIn = sequenceItem.busCommand;
+			@(posedge testInterface.clock);
+
 			collectedItem.busCommand      = testInterface.busInterface.snoopyCommandIn;
-			collectedItem.protocolCommand = testInterface.busInterface.snoopyCommandOut;
+			collectedItem.protocolCommand = testInterface.protocolInterface.snoopyCommandIn;
+
+			collectedItem.snoopyStateOut   = testInterface.cacheInterface.snoopyStateOut;
+			collectedItem.snoopyStateIn    = testInterface.cacheInterface.snoopyStateIn;
+			collectedItem.protocolStateOut = testInterface.protocolInterface.snoopyStateOut;
+			collectedItem.protocolStateIn  = testInterface.protocolInterface.snoopyStateIn;
 
 			case (testInterface.busInterface.snoopyCommandIn) 
 				BUS_READ: begin
@@ -300,15 +318,9 @@ package testPackage;
 						//testInterface.snoopySlaveInterface.readEnabled = 1;
 						wait (testInterface.snoopySlaveInterface.functionComplete == 1);
 						//testInterface.snoopySlaveInterface.readEnabled = 0;
-						collectedItem.cachedData[testInterface.cacheInterface.snoopyOffset]                  = testInterface.cacheInterface.snoopyDataOut;
-						collectedItem.readData[testInterface.snoopySlaveInterface.address[OFFSET_WIDTH - 1]] = testInterface.cpuSlaveInterface.dataIn;
+						collectedItem.cachedData[testInterface.cacheInterface.snoopyOffset]                      = testInterface.cacheInterface.snoopyDataOut;
+						collectedItem.readData[testInterface.snoopySlaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.snoopySlaveInterface.dataIn;
 
-						if (testInterface.cacheInterface.snoopyWriteState == 1) begin
-							collectedItem.snoopyStateOut   = testInterface.cacheInterface.snoopyStateOut;
-							collectedItem.snoopyStateIn    = testInterface.cacheInterface.snoopyStateIn;
-							collectedItem.protocolStateOut = testInterface.protocolInterface.snoopyStateOut;
-							collectedItem.protocolStateIn  = testInterface.protocolInterface.snoopyStateIn;
-						end
 						wait (testInterface.snoopySlaveInterface.functionComplete == 0);
 						//testInterface.snoopySlaveInterface.address++;
 					end
@@ -319,24 +331,22 @@ package testPackage;
 
 				BUS_INVALIDATE: begin
 					wait (testInterface.busInterface.snoopyCommandOut == BUS_INVALIDATE);
-					//testInterface.cpuArbiterInterface.grant = 1;
+					//testInterface.snoopyArbiterInterface.grant = 1;
+					collectedItem.cacheNumber = testInterface.busInterface.cacheNumberOut;
 					wait (testInterface.cacheInterface.snoopyWriteState == 1);
 
-					collectedItem.snoopyStateOut   = testInterface.cacheInterface.snoopyStateOut;
-					collectedItem.snoopyStateIn    = testInterface.cacheInterface.snoopyStateIn;
-					collectedItem.protocolStateOut = testInterface.protocolInterface.snoopyStateOut;
-					collectedItem.protocolStateIn  = testInterface.protocolInterface.snoopyStateIn;
 					collectedItem.invalidateEnable = testInterface.invalidateEnable;
 
-					wait (testInterface.cpuArbiterInterface.request == 0);
-					//testInterface.cpuArbiterInterface.grant = 0;
+					wait (testInterface.snoopyArbiterInterface.request == 0);
+					//testInterface.snoopyArbiterInterface.grant = 0;
 
 					//testInterface.busInterface.snoopyCommandIn = NONE;
 				end
 			endcase
 
 			//testInterface.snoopySlaveInterface.address = {ADDRESS_WIDTH{1'bz}};
-	endtask : collect
+			@(posedge testInterface.clock);
+		endtask : collect
 	endclass : SnoopyControllerMonitor
 
 	class SnoopyControllerScoreboard extends BasicScoreboard;
@@ -355,18 +365,21 @@ package testPackage;
 				int expected = collectedItem.busCommand;
 				int received = collectedItem.protocolCommand;
 				`uvm_error("COMMAND_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+				errorCounter++;
 			end
 
 			if (collectedItem.snoopyStateOut != collectedItem.protocolStateOut) begin
 				int expected = collectedItem.snoopyStateOut;
 				int received = collectedItem.protocolStateOut;
 				`uvm_error("STATE_OUT_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+				errorCounter++;
 			end
 			
 			if (collectedItem.snoopyStateIn != collectedItem.protocolStateIn) begin
 				int expected = collectedItem.snoopyStateIn;
 				int received = collectedItem.protocolStateIn;
 				`uvm_error("STATE_IN_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+				errorCounter++;
 			end
 
 			if (collectedItem.busCommand == BUS_READ) begin
@@ -375,6 +388,7 @@ package testPackage;
 							int expected = collectedItem.readData[i];
 							int received = collectedItem.cachedData[i];
 							`uvm_error("DATA_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+							errorCounter++;
 						end
 				end
 			end else begin
@@ -382,12 +396,14 @@ package testPackage;
 					int expected = collectedItem.cacheNumber;
 					int received = CACHE_ID;
 					`uvm_error("CACHE_NUMBER_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+					errorCounter++;
 				end
 
 				if (collectedItem.invalidateEnable != 1) begin
 					int expected = collectedItem.invalidateEnable;
 					int received = 1;
 					`uvm_error("INVALIDATE_ENABLE_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
+					errorCounter++;
 				end
 			end
 

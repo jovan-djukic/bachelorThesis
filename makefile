@@ -1,9 +1,10 @@
-VLOG				 = vlog
-SRC					 = src
-UVM_HOME		 = ./$(SRC)/uvm-1.1d
-INCLUDES		 = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm.sv
-FLAGS				 = +define+UVM_NO_DPI
-UVM_COMMAND  = $(VLOG) $(FLAGS) $(INCLUDES)
+VLOG        = vlog
+SRC         = src
+UVM_HOME    = ./$(SRC)/uvm-1.1d
+INCLUDES    = +incdir+$(UVM_HOME)/src $(UVM_HOME)/src/uvm.sv
+FLAGS       = +define+UVM_NO_DPI
+UVM_COMMAND = $(VLOG) $(FLAGS) $(INCLUDES)
+LIBRARY     = bachelorThesis
 
 #command for verificaton
 MODELSIM_VERIFICATION_COMMAND   = vsim -c bachelorThesis.TestBench -do "run -all"
@@ -180,6 +181,13 @@ SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_IMPLEMENTATION   = \
 snoopy_invalidate_cache_controller_snoopy_controller_test : $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_INCLUDES) \
 																							 					 		$(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_IMPLEMENTATION)
 	$(UVM_COMMAND) $? && $(MODELSIM_VERIFICATION_COMMAND)
+
+.PHONY : clean
+
+clean : 
+	vdel -lib $(LIBRARY) -all
+	vlib $(LIBRARY)
+	vmap work $(LIBRARY)
 #==========================================================================================================================================================
 #moesif
 SNOOPY_INVALIDATE_MOESIF_SOURCE_DIRECTORY         = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/moesif

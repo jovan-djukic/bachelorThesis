@@ -1,5 +1,4 @@
 module TestBench();
-	
 	import uvm_pkg::*;
 	import testPackage::*;
 	import busCommands::*;
@@ -19,7 +18,9 @@ module TestBench();
 
 	always #5 testInterface.clock = ~testInterface.clock;
 
-	CacheController cacheController(
+	CacheController#(
+		.CACHE_ID(CACHE_ID)
+	) cacheController(
 		.cpuSlaveInterface(testInterface.cpuSlaveInterface),
 		.cpuMasterInterface(testInterface.cpuMasterInterface),
 		.snoopySlaveInterface(testInterface.snoopySlaveInterface),
@@ -77,7 +78,7 @@ module TestBench();
 	always_comb begin
 		testInterface.protocolInterface.snoopyStateIn = INVALID;
 
-		case (testInterface.protocolInterface.snoopyCommandOut)
+		case (testInterface.protocolInterface.snoopyCommandIn)
 			BUS_READ: begin
 				testInterface.protocolInterface.snoopyStateIn = VALID;
 			end
@@ -103,6 +104,6 @@ module TestBench();
 			.INVALID_STATE(INVALID_STATE)
 		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
 
-		run_test("CPUControllerTest");
+		run_test("SnoopyControllerTest");
 	end
 endmodule : TestBench
