@@ -25,6 +25,15 @@ module CacheController#(
 		end
 	end
 
+	//this for writeback race condition
+	logic writeBackInvalidated;
+	always_comb begin
+		writeBackInvalidated = 0;
+		if (cacheInterface.cpuTagOut == cacheInterface.snoopyTagIn && cacheInterface.cpuIndex == cacheInterface.snoopyIndex && cacheInterface.snoopyHit == 1) begin
+			writeBackInvalidated = 1;
+		end
+	end
+
 	//cpu controller variables
 	logic[cacheInterface.OFFSET_WIDTH - 1 : 0] wordCounter;
 	logic[cacheInterface.TAG_WIDTH - 1    : 0] masterTag;
@@ -203,13 +212,13 @@ module CacheController#(
 	always_ff @(posedge clock, reset) begin
 		if (reset == 1) begin
 			cpuControllerReset();
-		end else if (lock != 1) begin
+		end else begin
 			case (cpuControllerState)
 				//waiting for read or write request
 				WAITING_FOR_REQUEST: begin
 					commandInterface.cpuCommandOut <= NONE;
 					//if request present
-					if (cpuSlaveInterface.readEnabled == 1 || cpuSlaveInterface.writeEnabled == 1) begin
+					if (lock != 1 && (cpuSlaveInterface.readEnabled == 1 || cpuSlaveInterface.writeEnabled == 1)) begin
 						//if hit serve request, else read block
 						if (cacheInterface.cpuHit == 1) begin
 							if (cpuSlaveInterface.writeEnabled == 1) begin
@@ -291,7 +300,7 @@ module CacheController#(
 
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
-		commandInterface.snoopyCommandOut         <= NONE;
+		commandInterface.snoopyCommandOut     <= NONE;
 		snoopySlaveInterface.functionComplete <= 0;
 		cacheInterface.snoopyWriteState       <= 0;
 		invalidateEnable                      <= 0;
@@ -321,8 +330,11 @@ module CacheController#(
 						cacheInterface.snoopyWriteState <= 1;
 						invalidateEnable                <= 1;
 					end 
+					if (writeBackInvalidated == 1) begin
+						cpuControllerState <= WAITING_FOR_REQUEST;
+					end
 				end else if (lock == 1) begin
-					if (cpuControllerState == WRITING_BUS_INVALIDATE || cpuControllerState == WRITING_BACK) begin
+					if (cpuControllerState == WRITING_BUS_INVALIDATE) begin
 						cpuControllerState <= WAITING_FOR_REQUEST;
 					end
 				end
