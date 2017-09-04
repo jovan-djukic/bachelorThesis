@@ -32,11 +32,19 @@ ARBITER_INCLUDES         = $(ARBITER_SOURCE_DIRECTORY)/*.sv
 
 #simple arbiter
 SIMPLE_ARBITER_SOURCE_DIRECTORY = $(ARBITER_SOURCE_DIRECTORY)/simpleArbiter
-SIMPLE_ARBITER_IMPLEMENTATION   = $(SIMPLE_ARBITER_SOURCE_DIRECTORY)/*.sv
+SIMPLE_ARBITER_IMPLEMENTATION   = $(SIMPLE_ARBITER_SOURCE_DIRECTORY)/implementation/*.sv
 SIMPLE_ARBITER_INCLUDES         = $(ARBITER_INCLUDES)
+SIMPLE_ARBITER_VERIFICATION			= $(SIMPLE_ARBITER_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																	$(SIMPLE_ARBITER_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																	$(SIMPLE_ARBITER_SOURCE_DIRECTORY)/verification/testBench.sv 
 
 simple_arbiter_implementation : $(SIMPLE_ARBITER_INCLUDES) $(SIMPLE_ARBITER_IMPLEMENTATION)
 	$(VLOG) $?
+
+simple_arbiter_test_files : $(UVM_BASIC_TEST_PACKAGE) $(SIMPLE_ARBITER_VERIFICATION)
+	$(UVM_COMMAND) $? && $(MODELSIM_VERIFICATION_COMMAND)
+
+simple_arbiter_verification : simple_arbiter_implementation simple_arbiter_test_files
 
 #memory
 MEMORY_SOURCE_DIRECTORY = $(SRC)/memory
