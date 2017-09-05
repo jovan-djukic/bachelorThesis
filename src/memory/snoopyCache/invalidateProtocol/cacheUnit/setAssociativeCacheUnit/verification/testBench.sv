@@ -17,7 +17,8 @@ module TestBench();
 	SetAssociativeCacheUnit#(
 		.STATE_TYPE(STATE_TYPE)
 	)	setAssociativeCacheUnit(
-		.cacheInterface(testInterface.cacheInterface),
+		.cpuCacheInterface(testInterface.cpuCacheInterface),
+		.snoopyCacheInterface(testInterface.snoopyCacheInterface),
 		.accessEnable(testInterface.accessEnable),
 		.invalidateEnable(testInterface.invalidateEnable),
 		.clock(testInterface.clock),

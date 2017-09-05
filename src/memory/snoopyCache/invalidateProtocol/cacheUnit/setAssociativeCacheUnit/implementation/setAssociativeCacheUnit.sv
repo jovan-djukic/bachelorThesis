@@ -2,26 +2,28 @@
 module SetAssociativeCacheUnit#(
 	type STATE_TYPE          = logic[1 : 0]
 )(
-	CacheInterface.cache cacheInterface,
-	input logic accessEnable, invalidateEnable, clock, reset
+	CPUCacheInterface.cache cpuCacheInterface,
+	SnoopyCacheInterface.cache snoopyCacheInterface,
+	input logic accessEnable, invalidateEnable,
+	input logic clock, reset
 );
 
 	//generate variables
 	genvar i;
 	//REPLACEMENT_ALGORITHM_BEGIN
 	//parameters need for replacement algorithms
-	localparam NUMBER_OF_CACHE_LINES = 1 << cacheInterface.SET_ASSOCIATIVITY;
+	localparam NUMBER_OF_CACHE_LINES = 1 << cpuCacheInterface.SET_ASSOCIATIVITY;
 
 	ReplacementAlgorithmInterface#(
 		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)	
 	) replacementAlgorithmInterface();
 
 	SetAssociativeLRU#(
-		.INDEX_WIDTH(cacheInterface.INDEX_WIDTH)
+		.INDEX_WIDTH(cpuCacheInterface.INDEX_WIDTH)
 	) setAssociativeLRU(
 		.replacementAlgorithmInterface(replacementAlgorithmInterface),
-		.cpuIndexIn(cacheInterface.cpuIndex),
-		.snoopyIndexIn(cacheInterface.snoopyIndex),
+		.cpuIndexIn(cpuCacheInterface.index),
+		.snoopyIndexIn(snoopyCacheInterface.index),
 		.clock(clock),
 		.reset(reset)
 	);
@@ -29,25 +31,35 @@ module SetAssociativeCacheUnit#(
 	//assigns for control signals of replacement algorithm
 	assign replacementAlgorithmInterface.accessEnable          = accessEnable;
 	assign replacementAlgorithmInterface.invalidateEnable      = invalidateEnable;
-	assign replacementAlgorithmInterface.lastAccessedCacheLine = cacheInterface.cpuCacheNumber;
-	assign replacementAlgorithmInterface.invalidatedCacheLine  = cacheInterface.snoopyCacheNumber;
+	assign replacementAlgorithmInterface.lastAccessedCacheLine = cpuCacheInterface.cacheNumber;
+	assign replacementAlgorithmInterface.invalidatedCacheLine  = snoopyCacheInterface.cacheNumber;
 
 	//REPLACEMENT_ALGORITHM_END
 
 	//CACHE_UNITS_BEGIN
 	//parameters required for cache units
-	localparam NUMBER_OF_SMALLER_CACHES = 1 << cacheInterface.SET_ASSOCIATIVITY;
+	localparam NUMBER_OF_SMALLER_CACHES = 1 << cpuCacheInterface.SET_ASSOCIATIVITY;
 
-	CacheInterface#(
-		.TAG_WIDTH(cacheInterface.TAG_WIDTH),
-		.INDEX_WIDTH(cacheInterface.INDEX_WIDTH),
-		.OFFSET_WIDTH(cacheInterface.OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(cacheInterface.SET_ASSOCIATIVITY),
-		.DATA_WIDTH(cacheInterface.DATA_WIDTH),
+	CPUCacheInterface#(
+		.TAG_WIDTH(cpuCacheInterface.TAG_WIDTH),
+		.INDEX_WIDTH(cpuCacheInterface.INDEX_WIDTH),
+		.OFFSET_WIDTH(cpuCacheInterface.OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(cpuCacheInterface.SET_ASSOCIATIVITY),
+		.DATA_WIDTH(cpuCacheInterface.DATA_WIDTH),
 		.STATE_TYPE(STATE_TYPE),
-		.INVALID_STATE(cacheInterface.INVALID_STATE)
-	) cacheInterfaces[NUMBER_OF_SMALLER_CACHES]();
+		.INVALID_STATE(cpuCacheInterface.INVALID_STATE)
+	) cpuCacheInterfaces[NUMBER_OF_SMALLER_CACHES]();
 	
+	SnoopyCacheInterface#(
+		.TAG_WIDTH(snoopyCacheInterface.TAG_WIDTH),
+		.INDEX_WIDTH(snoopyCacheInterface.INDEX_WIDTH),
+		.OFFSET_WIDTH(snoopyCacheInterface.OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(snoopyCacheInterface.SET_ASSOCIATIVITY),
+		.DATA_WIDTH(snoopyCacheInterface.DATA_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(snoopyCacheInterface.INVALID_STATE)
+	) snoopyCacheInterfaces[NUMBER_OF_SMALLER_CACHES]();
+
 	//input signals assigns
 	generate
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
@@ -56,22 +68,23 @@ module SetAssociativeCacheUnit#(
 				.CACHE_NUMBER(i),
 				.STATE_TYPE(STATE_TYPE)
 			) directMappingCacheUnit(
-				.cacheInterface(cacheInterfaces[i]),
+				.cpuCacheInterface(cpuCacheInterfaces[i]),
+				.snoopyCacheInterface(snoopyCacheInterfaces[i]),
 				.clock(clock),
 				.reset(reset)
 			);
 			//cpu controller assings
-			assign cacheInterfaces[i].cpuIndex   = cacheInterface.cpuIndex;
-			assign cacheInterfaces[i].cpuOffset  = cacheInterface.cpuOffset;
-			assign cacheInterfaces[i].cpuTagIn   = cacheInterface.cpuTagIn;
-			assign cacheInterfaces[i].cpuDataIn  = cacheInterface.cpuDataIn;
-			assign cacheInterfaces[i].cpuStateIn = cacheInterface.cpuStateIn;
+			assign cpuCacheInterfaces[i].index   = cpuCacheInterface.index;
+			assign cpuCacheInterfaces[i].offset  = cpuCacheInterface.offset;
+			assign cpuCacheInterfaces[i].tagIn   = cpuCacheInterface.tagIn;
+			assign cpuCacheInterfaces[i].dataIn  = cpuCacheInterface.dataIn;
+			assign cpuCacheInterfaces[i].stateIn = cpuCacheInterface.stateIn;
 
 			//snoopy controller assings
-			assign cacheInterfaces[i].snoopyIndex   = cacheInterface.snoopyIndex;
-			assign cacheInterfaces[i].snoopyOffset  = cacheInterface.snoopyOffset;
-			assign cacheInterfaces[i].snoopyTagIn   = cacheInterface.snoopyTagIn;
-			assign cacheInterfaces[i].snoopyStateIn = cacheInterface.snoopyStateIn;
+			assign snoopyCacheInterfaces[i].index   = snoopyCacheInterface.index;
+			assign snoopyCacheInterfaces[i].offset  = snoopyCacheInterface.offset;
+			assign snoopyCacheInterfaces[i].tagIn   = snoopyCacheInterface.tagIn;
+			assign snoopyCacheInterfaces[i].stateIn = snoopyCacheInterface.stateIn;
 		end
 	endgenerate	
 
@@ -84,13 +97,13 @@ module SetAssociativeCacheUnit#(
 	logic[NUMBER_OF_SMALLER_CACHES - 1 : 0] snoopyIndividualHitSignals;
 	generate
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
-			assign cpuIndividualHitSignals[i]    = cacheInterfaces[i].cpuHit;
-			assign snoopyIndividualHitSignals[i] = cacheInterfaces[i].snoopyHit;
+			assign cpuIndividualHitSignals[i]    = cpuCacheInterfaces[i].hit;
+			assign snoopyIndividualHitSignals[i] = snoopyCacheInterfaces[i].hit;
 		end
 	endgenerate	
 	//collective hit signal
-	assign cacheInterface.cpuHit    = (| cpuIndividualHitSignals);
-	assign cacheInterface.snoopyHit = (| snoopyIndividualHitSignals);
+	assign cpuCacheInterface.hit    = (| cpuIndividualHitSignals);
+	assign snoopyCacheInterface.hit = (| snoopyIndividualHitSignals);
 
 	//select signals
 	//cpu controller select signals
@@ -107,61 +120,61 @@ module SetAssociativeCacheUnit#(
 	end
 	//cache select signals
 	logic[NUMBER_OF_SMALLER_CACHES - 1 : 0] cpuCacheSelectSignals, snoopyCacheSelectSignals;
-	assign cpuCacheSelectSignals    = cacheInterface.cpuHit == 1 ? cpuIndividualHitSignals : replacementSelectSignals;
+	assign cpuCacheSelectSignals    = cpuCacheInterface.hit == 1 ? cpuIndividualHitSignals : replacementSelectSignals;
 	assign snoopyCacheSelectSignals = snoopyIndividualHitSignals;
 
 	//write control signals
 	generate
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			//cpu controller write signals
-			assign cacheInterfaces[i].cpuWriteTag    =  cacheInterface.cpuWriteTag == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
-			assign cacheInterfaces[i].cpuWriteData   =  cacheInterface.cpuWriteData == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
-			assign cacheInterfaces[i].cpuWriteState  =  cacheInterface.cpuWriteState == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
+			assign cpuCacheInterfaces[i].writeTag    =  cpuCacheInterface.writeTag == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
+			assign cpuCacheInterfaces[i].writeData   =  cpuCacheInterface.writeData == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
+			assign cpuCacheInterfaces[i].writeState  =  cpuCacheInterface.writeState == 1 && cpuCacheSelectSignals[i] == 1 ? 1 : 0;
 
 			//snoopy controller write signals
-			assign cacheInterfaces[i].snoopyWriteState = cacheInterface.snoopyWriteState == 1 && snoopyCacheSelectSignals[i] == 1 ? 1 : 0;
+			assign snoopyCacheInterfaces[i].writeState = snoopyCacheInterface.writeState == 1 && snoopyCacheSelectSignals[i] == 1 ? 1 : 0;
 		end
 	endgenerate
 
 	//multiplexers for out signals
 	//helper signals 
-	logic[cacheInterface.TAG_WIDTH - 1         : 0] cpuTagOuts[NUMBER_OF_SMALLER_CACHES];
-	logic[cacheInterface.DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES], snoopyDataOuts[NUMBER_OF_SMALLER_CACHES];
-	logic[cacheInterface.SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumbers[NUMBER_OF_SMALLER_CACHES], snoopyCacheNumbers[NUMBER_OF_SMALLER_CACHES];
+	logic[cpuCacheInterface.TAG_WIDTH - 1         : 0] cpuTagOuts[NUMBER_OF_SMALLER_CACHES];
+	logic[cpuCacheInterface.DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES], snoopyDataOuts[NUMBER_OF_SMALLER_CACHES];
+	logic[cpuCacheInterface.SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumbers[NUMBER_OF_SMALLER_CACHES], snoopyCacheNumbers[NUMBER_OF_SMALLER_CACHES];
 	STATE_TYPE cpuStateOuts[NUMBER_OF_SMALLER_CACHES], snoopyStateOuts[NUMBER_OF_SMALLER_CACHES];
 
 	generate
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			//cpu controller helper signal assigns
-			assign cpuTagOuts[i]      = cacheInterfaces[i].cpuTagOut;
-			assign cpuDataOuts[i]     = cacheInterfaces[i].cpuDataOut;
-			assign cpuStateOuts[i]    = cacheInterfaces[i].cpuStateOut;
-			assign cpuCacheNumbers[i] = cacheInterfaces[i].cpuCacheNumber;
+			assign cpuTagOuts[i]      = cpuCacheInterfaces[i].tagOut;
+			assign cpuDataOuts[i]     = cpuCacheInterfaces[i].dataOut;
+			assign cpuStateOuts[i]    = cpuCacheInterfaces[i].stateOut;
+			assign cpuCacheNumbers[i] = cpuCacheInterfaces[i].cacheNumber;
 			
 			//snoopy controller helper singal assigns
-			assign snoopyDataOuts[i]     = cacheInterfaces[i].snoopyDataOut;
-			assign snoopyStateOuts[i]    = cacheInterfaces[i].snoopyStateOut;
-			assign snoopyCacheNumbers[i] = cacheInterfaces[i].snoopyCacheNumber;
+			assign snoopyDataOuts[i]     = snoopyCacheInterfaces[i].dataOut;
+			assign snoopyStateOuts[i]    = snoopyCacheInterfaces[i].stateOut;
+			assign snoopyCacheNumbers[i] = snoopyCacheInterfaces[i].cacheNumber;
 		end
 	endgenerate
 	//encoders for cache numbers
 	//cpu encoder
 	always_comb begin
-		cacheInterface.cpuCacheNumber = 0;
+		cpuCacheInterface.cacheNumber = 0;
 		
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cpuCacheSelectSignals[i] == 1) begin
-				cacheInterface.cpuCacheNumber = cpuCacheNumbers[i];
+				cpuCacheInterface.cacheNumber = cpuCacheNumbers[i];
 			end
 		end
 	end
 	//snoopy encoder
 	always_comb begin
-		cacheInterface.snoopyCacheNumber = 0;
+		snoopyCacheInterface.cacheNumber = 0;
 
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (snoopyCacheSelectSignals[i] == 1) begin
-				cacheInterface.snoopyCacheNumber = snoopyCacheNumbers[i];
+				snoopyCacheInterface.cacheNumber = snoopyCacheNumbers[i];
 			end
 		end
 	end
@@ -169,28 +182,28 @@ module SetAssociativeCacheUnit#(
 
 	//cpu controller multiplexer
 	always_comb begin
-		cacheInterface.cpuTagOut   = 0; 
-		cacheInterface.cpuDataOut  = 0;
-		cacheInterface.cpuStateOut = cacheInterface.INVALID_STATE;
+		cpuCacheInterface.tagOut   = 0; 
+		cpuCacheInterface.dataOut  = 0;
+		cpuCacheInterface.stateOut = cpuCacheInterface.INVALID_STATE;
 
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
-			if (cacheInterface.cpuCacheNumber == i) begin
-				cacheInterface.cpuTagOut   = cpuTagOuts[i];
-				cacheInterface.cpuDataOut  = cpuDataOuts[i];
-				cacheInterface.cpuStateOut = cpuStateOuts[i];
+			if (cpuCacheInterface.cacheNumber == i) begin
+				cpuCacheInterface.tagOut   = cpuTagOuts[i];
+				cpuCacheInterface.dataOut  = cpuDataOuts[i];
+				cpuCacheInterface.stateOut = cpuStateOuts[i];
 			end
 		end
 	end
 
 	//snoopy controller multiplexer
 	always_comb begin
-		cacheInterface.snoopyStateOut = cacheInterface.INVALID_STATE;
-		cacheInterface.snoopyDataOut  = 0;
+		snoopyCacheInterface.stateOut = snoopyCacheInterface.INVALID_STATE;
+		snoopyCacheInterface.dataOut  = 0;
 
 		for (int i = 0; i< NUMBER_OF_SMALLER_CACHES; i++) begin
-			if (cacheInterface.snoopyCacheNumber == i) begin
-				cacheInterface.snoopyStateOut = snoopyStateOuts[i];
-				cacheInterface.snoopyDataOut  = snoopyDataOuts[i];
+			if (snoopyCacheInterface.cacheNumber == i) begin
+				snoopyCacheInterface.stateOut = snoopyStateOuts[i];
+				snoopyCacheInterface.dataOut  = snoopyDataOuts[i];
 			end
 		end
 	end

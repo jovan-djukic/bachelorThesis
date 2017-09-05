@@ -15,7 +15,7 @@ package testPackage;
 	localparam INDEX_WIDTH                                          = 4;
 	localparam OFFSET_WIDTH                                         = 4;
 	localparam SET_ASSOCIATIVITY                                    = 2;
-	localparam DATA_WIDTH                                           = 16;
+	localparam DATA_WIDTH                                           = 8;
 	localparam type STATE_TYPE                                      = State;
 	localparam CPU_STATE_SET_LENGTH                                 = 3;
 	localparam STATE_TYPE CPU_STATE_SET[CPU_STATE_SET_LENGTH]       = {STATE_1, STATE_2, STATE_3};
@@ -106,7 +106,9 @@ package testPackage;
 		endfunction : build_phase
 
 		virtual task resetDUT();
-			testInterface.reset = 1;
+			testInterface.reset            = 1;
+			testInterface.accessEnable     = 0;
+			testInterface.invalidateEnable = 0;
 			repeat (2) begin
 				@(posedge testInterface.clock);
 			end
@@ -117,31 +119,31 @@ package testPackage;
 			CacheUnitSequenceItem sequenceItem;
 			$cast(sequenceItem, req);
 			//drive cpu controller signals
-			testInterface.cacheInterface.cpuIndex   = sequenceItem.cpuIndex;
-			testInterface.cacheInterface.cpuOffset  = 0;
-			testInterface.cacheInterface.cpuTagIn   = sequenceItem.cpuTagIn;
-			testInterface.cacheInterface.cpuStateIn = sequenceItem.cpuStateIn;
-			testInterface.cacheInterface.cpuDataIn  = sequenceItem.cpuDataIn;
+			testInterface.cpuCacheInterface.index   = sequenceItem.cpuIndex;
+			testInterface.cpuCacheInterface.offset  = 0;
+			testInterface.cpuCacheInterface.tagIn   = sequenceItem.cpuTagIn;
+			testInterface.cpuCacheInterface.stateIn = sequenceItem.cpuStateIn;
+			testInterface.cpuCacheInterface.dataIn  = sequenceItem.cpuDataIn;
 
 			//wait for data to sync in
 			@(posedge testInterface.clock);
 
 			//if not hit write data
-			if (testInterface.cacheInterface.cpuHit == 0) begin
-				testInterface.cacheInterface.cpuWriteTag   = 1;
-				testInterface.cacheInterface.cpuWriteState = 1;
-				testInterface.cacheInterface.cpuWriteData  = 1;
+			if (testInterface.cpuCacheInterface.hit == 0) begin
+				testInterface.cpuCacheInterface.writeTag   = 1;
+				testInterface.cpuCacheInterface.writeState = 1;
+				testInterface.cpuCacheInterface.writeData  = 1;
 
 				for (int i = 0; i < NUMBER_OF_WORDS; i++) begin
-					testInterface.cacheInterface.cpuOffset    = i;
+					testInterface.cpuCacheInterface.offset    = i;
 					repeat (2) begin
 						@(posedge testInterface.clock);
 					end
 				end	
 
-				testInterface.cacheInterface.cpuWriteTag   = 0;
-				testInterface.cacheInterface.cpuWriteState = 0;
-				testInterface.cacheInterface.cpuWriteData  = 0;
+				testInterface.cpuCacheInterface.writeTag   = 0;
+				testInterface.cpuCacheInterface.writeState = 0;
+				testInterface.cpuCacheInterface.writeData  = 0;
 			end
 
 			testInterface.accessEnable = 1;
@@ -150,18 +152,18 @@ package testPackage;
 			@(posedge testInterface.clock);
 
 			//drive snoopy controller signals
-			testInterface.cacheInterface.snoopyIndex   = sequenceItem.snoopyIndex;
-			testInterface.cacheInterface.snoopyTagIn   = sequenceItem.snoopyTagIn;
-			testInterface.cacheInterface.snoopyOffset  = 0;
-			testInterface.cacheInterface.snoopyStateIn = sequenceItem.snoopyStateIn;
+			testInterface.snoopyCacheInterface.index   = sequenceItem.snoopyIndex;
+			testInterface.snoopyCacheInterface.tagIn   = sequenceItem.snoopyTagIn;
+			testInterface.snoopyCacheInterface.offset  = 0;
+			testInterface.snoopyCacheInterface.stateIn = sequenceItem.snoopyStateIn;
 
 			//wait for data to sync in
 			@(posedge testInterface.clock);
 
 			//change state if hit
-			if (testInterface.cacheInterface.snoopyHit == 1) begin
+			if (testInterface.snoopyCacheInterface.hit == 1) begin
 				//invalidate block if new state is invalida state
-				if (testInterface.cacheInterface.snoopyStateIn == INVALID_STATE) begin
+				if (testInterface.snoopyCacheInterface.stateIn == INVALID_STATE) begin
 					//first invalidate line 
 					testInterface.invalidateEnable = 1;
 					repeat(2) begin
@@ -170,11 +172,11 @@ package testPackage;
 					testInterface.invalidateEnable = 0;
 				end
 
-				testInterface.cacheInterface.snoopyWriteState = 1;
+				testInterface.snoopyCacheInterface.writeState = 1;
 				repeat (2) begin
 					@(posedge testInterface.clock);
 				end
-				testInterface.cacheInterface.snoopyWriteState = 0;
+				testInterface.snoopyCacheInterface.writeState = 0;
 			end
 
 			@(posedge testInterface.clock);
@@ -277,12 +279,12 @@ package testPackage;
 			@(posedge testInterface.clock);
 			
 			//collect cpu controller signals
-			collectedItem.cpuIndex       = testInterface.cacheInterface.cpuIndex;
-			collectedItem.cpuTagIn       = testInterface.cacheInterface.cpuTagIn;
-			collectedItem.cpuStateIn     = testInterface.cacheInterface.cpuStateIn;
-			collectedItem.cpuDataIn      = testInterface.cacheInterface.cpuDataIn;
-			collectedItem.cpuHit         = testInterface.cacheInterface.cpuHit;
-			collectedItem.cpuCacheNumber = testInterface.cacheInterface.cpuCacheNumber;
+			collectedItem.cpuIndex       = testInterface.cpuCacheInterface.index;
+			collectedItem.cpuTagIn       = testInterface.cpuCacheInterface.tagIn;
+			collectedItem.cpuStateIn     = testInterface.cpuCacheInterface.stateIn;
+			collectedItem.cpuDataIn      = testInterface.cpuCacheInterface.dataIn;
+			collectedItem.cpuHit         = testInterface.cpuCacheInterface.hit;
+			collectedItem.cpuCacheNumber = testInterface.cpuCacheInterface.cacheNumber;
 
 			//if not hit write data
 			if (collectedItem.cpuHit == 0) begin
@@ -296,9 +298,9 @@ package testPackage;
 			@(posedge testInterface.clock);
 
 			//collect output signals
-			collectedItem.cpuTagOut      = testInterface.cacheInterface.cpuTagOut;
-			collectedItem.cpuDataOut     = testInterface.cacheInterface.cpuDataOut;
-			collectedItem.cpuStateOut    = testInterface.cacheInterface.cpuStateOut;
+			collectedItem.cpuTagOut      = testInterface.cpuCacheInterface.tagOut;
+			collectedItem.cpuDataOut     = testInterface.cpuCacheInterface.dataOut;
+			collectedItem.cpuStateOut    = testInterface.cpuCacheInterface.stateOut;
 			
 			//synchronize with monitor
 			@(posedge testInterface.clock);
@@ -306,17 +308,17 @@ package testPackage;
 			//wait for driver to drive snoopy controller signals
 			@(posedge testInterface.clock);
 			//collect snoopy controller signals
-			collectedItem.snoopyIndex       = testInterface.cacheInterface.snoopyIndex;
-			collectedItem.snoopyTagIn       = testInterface.cacheInterface.snoopyTagIn;
-			collectedItem.snoopyStateIn     = testInterface.cacheInterface.snoopyStateIn;
-			collectedItem.snoopyHit         = testInterface.cacheInterface.snoopyHit;
-			collectedItem.snoopyDataOut     = testInterface.cacheInterface.snoopyDataOut;
-			collectedItem.snoopyCacheNumber = testInterface.cacheInterface.snoopyCacheNumber;
+			collectedItem.snoopyIndex       = testInterface.snoopyCacheInterface.index;
+			collectedItem.snoopyTagIn       = testInterface.snoopyCacheInterface.tagIn;
+			collectedItem.snoopyStateIn     = testInterface.snoopyCacheInterface.stateIn;
+			collectedItem.snoopyHit         = testInterface.snoopyCacheInterface.hit;
+			collectedItem.snoopyDataOut     = testInterface.snoopyCacheInterface.dataOut;
+			collectedItem.snoopyCacheNumber = testInterface.snoopyCacheInterface.cacheNumber;
 
 			//change state if hit
-			if (testInterface.cacheInterface.snoopyHit == 1) begin
+			if (testInterface.snoopyCacheInterface.hit == 1) begin
 				//invalidate block if new state is invalida state
-				if (testInterface.cacheInterface.snoopyStateIn == INVALID_STATE) begin
+				if (testInterface.snoopyCacheInterface.stateIn == INVALID_STATE) begin
 					repeat(2) begin
 						@(posedge testInterface.clock);
 					end
@@ -326,10 +328,10 @@ package testPackage;
 					@(posedge testInterface.clock);
 				end
 
-				collectedItem.snoopyStateOut = testInterface.cacheInterface.snoopyStateOut;
-				if (testInterface.cacheInterface.snoopyStateIn == INVALID_STATE) begin
-					collectedItem.snoopyInvalidatedCacheNumber = testInterface.cacheInterface.snoopyCacheNumber;
-					collectedItem.isInvalidated                = ~testInterface.cacheInterface.snoopyHit;
+				collectedItem.snoopyStateOut = testInterface.snoopyCacheInterface.stateOut;
+				if (testInterface.snoopyCacheInterface.stateIn == INVALID_STATE) begin
+					collectedItem.snoopyInvalidatedCacheNumber =  testInterface.snoopyCacheInterface.cacheNumber;
+					collectedItem.isInvalidated                = ~testInterface.snoopyCacheInterface.hit;
 				end
 			end
 
@@ -402,17 +404,17 @@ package testPackage;
 				end
 				//check if tagOuts match
 				if (collectedItem.cpuTagOut != tagOut) begin
-					`uvm_info("TAG_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", tagOut, collectedItem.cpuTagOut), UVM_LOW)
+					`uvm_info("CPU_TAG_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", tagOut, collectedItem.cpuTagOut), UVM_LOW)
 					errorCounter++;
 				end
 				//check if dataOuts match
 				if (collectedItem.cpuDataOut != dataOut) begin
-					`uvm_info("DATA_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", dataOut, collectedItem.cpuDataOut), UVM_LOW)
+					`uvm_info("CPU_DATA_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", dataOut, collectedItem.cpuDataOut), UVM_LOW)
 					errorCounter++;
 				end
 				//check if stateOuts match
 				if (collectedItem.cpuStateOut != stateOut) begin
-					`uvm_info("STATE_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", stateOut, collectedItem.cpuStateOut), UVM_LOW)
+					`uvm_info("CPU_STATE_OUT_ERROR", $sformatf("SCOREBOARD=%d, CACHE=%d", stateOut, collectedItem.cpuStateOut), UVM_LOW)
 					errorCounter++;
 				end
 			end

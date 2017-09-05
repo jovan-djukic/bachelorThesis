@@ -8,7 +8,7 @@ interface TestInterface#(
 	STATE_TYPE INVALID_STATE = 2'b0
 );
 	
-	CacheInterface#(
+	CPUCacheInterface#(
 		.TAG_WIDTH(TAG_WIDTH),
 		.INDEX_WIDTH(INDEX_WIDTH),
 		.OFFSET_WIDTH(OFFSET_WIDTH),
@@ -16,8 +16,19 @@ interface TestInterface#(
 		.DATA_WIDTH(DATA_WIDTH),
 		.STATE_TYPE(STATE_TYPE),
 		.INVALID_STATE(INVALID_STATE)
-	) cacheInterface();
-	logic[SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumber, snoopyCacheNumber;
-	bit accessEnable, invalidateEnable, clock, reset;
+	) cpuCacheInterface();
+
+	SnoopyCacheInterface#(
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.DATA_WIDTH(DATA_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)
+	) snoopyCacheInterface();
+
+	logic accessEnable, invalidateEnable;
+	bit clock, reset;
 
 endinterface : TestInterface
