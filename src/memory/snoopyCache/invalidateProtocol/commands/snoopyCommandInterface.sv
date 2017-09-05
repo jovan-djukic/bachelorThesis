@@ -1,7 +1,4 @@
-interface SnoopyCommandInterface#(
-	int NUMBER_OF_CACHES   = 4,
-	int CACHE_NUMBER_WIDTH = $clog2(NUMBER_OF_CACHES)
-)();
+interface SnoopyCommandInterface();
 	import commands::*;
 
 	Command commandIn;

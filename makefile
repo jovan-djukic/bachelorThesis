@@ -187,48 +187,46 @@ snoopy_invalidate_protocol_implementation_source : $(SNOOPY_INVALIDATE_PROTOCOL_
 snoopy_invalidate_protocol_implementation : snoopy_invalidate_commands_implementation_source \
 																						snoopy_invalidate_protocol_implementation_source
 
-#snoopy invalidate cache controller
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/cacheController
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_INCLUDES					= $(MEMORY_INCLUDES) \
-																											$(SNOOPY_INVALIDATE_CACHE_UNIT_INCLUDES) \
-																											$(SNOOPY_INVALIDATE_COMMAND_INCLUDES) \
-																											$(SNOOPY_INVALIDATE_PROTOCOL_INCLUDES) \
-																											$(ARBITER_INCLUDES) 
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_IMPLEMENTATION_SOURCE   = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SOURCE_DIRECTORY)/implementation/*.sv
+#snoopy invalidate cpu controller implementation
+SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/cpuController
+SNOOPY_INVALIDATE_CPU_CONTROLLER_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY)/implementation/*.sv
 
-snoopy_invalidate_cache_controller_implementation_source : $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_IMPLEMENTATION_SOURCE)
+snoopy_invalidate_cpu_controller_implementation_source : $(SNOOPY_INVALIDATE_CPU_CONTROLLER_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
 
-snoopy_invalidate_cache_controller_implementation : memory_implementation_source \
-																										cache_unit_implementation_source \
-																										snoopy_invalidate_commands_implementation_source \
-																										snoopy_invalidate_protocol_implementation_source \
-																										arbiter_implementation_source \
-																										snoopy_invalidate_cache_controller_implementation_source
+snoopy_invalidate_cpu_controller_implementation : memory_implementation_source \
+																									snoopy_invalidate_cache_unit_implementation_source \
+																									snoopy_invalidate_commands_implementation_source \
+																									snoopy_invalidate_protocol_implementation_source \
+																									arbiter_implementation_source \
+																									snoopy_invalidate_cpu_controller_implementation_source
 
-#there are multiple tests for the controller
-#controller verification
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SOURCE_DIRECTORY)/verification
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_INCLUDES				 = $(SNOOPY_INVALIDATE_SET_ASSOCIATIVE_CACHE_INCLUDES) \
-																																	 $(SNOOPY_INVALIDATE_SET_ASSOCIATIVE_CACHE_IMPLEMENTATION) \
-																																	 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_INCLUDES) \
-																																	 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_IMPLEMENTATION) \
-																																	 $(UVM_BASIC_TEST_PACKAGE) 
+#write through invalidate protocol for testing
+SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/writeThroughInvalidate
+SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE = $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/states.sv \
+																									      $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/wti.sv 
 
-#cpu controller test
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_SOURCE_DIRECTORY)/cpuControllerTest
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE_DIRECTORY)/testInterface.sv \
-																																$(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE_DIRECTORY)/testPackage.sv \
-																																$(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE_DIRECTORY)/testBench.sv
+snoopy_write_through_invalidate_implementation_source : $(SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_write_through_invalidate_implementation : snoopy_invalidate_protocol_implementation \
+																								 snoopy_write_through_invalidate_implementation_source
+
+#snoopy invalidate cpu controller verification
+SNOOPY_INVALIDATE_CPU_CONTROLLER_VERIFICATION_SOURCE = $(SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																											 $(SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																											 $(SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY)/verification/testBench.sv
 	
-snoopy_invalidate_cache_controller_cpu_controller_test_source : $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CPU_CONTROLLER_TEST_SOURCE)
+snoopy_invalidate_cpu_controller_verification_source : $(SNOOPY_INVALIDATE_CPU_CONTROLLER_VERIFICATION_SOURCE)
 	$(UVM_COMMAND) $?
 
-snoopy_invalidate_cache_controller_cpu_controller_test : snoopy_invalidate_set_associative_cache_implementation \
-																												 snoopy_invalidate_cache_controller_implementation \
-																												 uvm_basic_test_package_source \
-																												 snoopy_invalidate_cache_controller_cpu_controller_test_source 
-	$(MODELSIM_VERIFICATION_COMMAND) 
+snoopy_invalidate_cpu_controller_verification : snoopy_invalidate_set_associative_cache_implementation \
+																								snoopy_write_through_invalidate_implementation \
+																								snoopy_invalidate_cpu_controller_implementation \
+																								uvm_basic_test_package_source \
+																								snoopy_invalidate_cpu_controller_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
 
 #snoopy controller test
 SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_SOURCE_DIRECTORY)/snoopyControllerTest

@@ -3,17 +3,17 @@ interface CPUProtocolInterface#(
 )();
 	import commands::*;
 
-	logic cpuRead, cpuWrite;
+	logic read, write;
 	logic writeBackRequired, invalidateRequired;
-	STATE_TYPE cpuStateIn, cpuStateOut;
+	STATE_TYPE stateIn, stateOut;
 
 	modport controller(
-		input cpuStateIn, writeBackRequired, invalidateRequired,
-		output  cpuStateOut, cpuRead, cpuWrite
+		input stateIn, writeBackRequired, invalidateRequired,
+		output stateOut, read, write
 	);
 
 	modport protocol (
-		input  cpuStateOut, cpuRead, cpuWrite,
-		output cpuStateIn, writeBackRequired, invalidateRequired
+		input stateOut, read, write,
+		output stateIn, writeBackRequired, invalidateRequired
 	);
 endinterface : CPUProtocolInterface

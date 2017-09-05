@@ -3,16 +3,16 @@ interface SnoopyProtocolInterface#(
 )();
 	import commands::*;
 
-	STATE_TYPE snoopyStateIn, snoopyStateOut;
-	Command 	 snoopyCommandIn;
+	STATE_TYPE stateIn, stateOut;
+	Command 	 commandIn;
 
 	modport controller(
-		input snoopyStateIn,
-		output  snoopyStateOut, snoopyCommandIn
+		input stateIn,
+		output stateOut, commandIn
 	);
 
 	modport protocol (
-		input  snoopyStateOut, snoopyCommandIn,
-		output snoopyStateIn
+		input  stateOut, commandIn,
+		output stateIn
 	);
 endinterface : SnoopyProtocolInterface

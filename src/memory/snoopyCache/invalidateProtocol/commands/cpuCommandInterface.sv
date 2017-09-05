@@ -1,11 +1,8 @@
-interface CPUCommandInterface#(
-	int NUMBER_OF_CACHES   = 4,
-	int CACHE_NUMBER_WIDTH = $clog2(NUMBER_OF_CACHES)
-)();
+interface CPUCommandInterface();
 	import commands::*;
 
 	Command commandOut;
-	logic[NUMBER_OF_CACHES - 1   : 0] isInvalidated;
+	logic 	isInvalidated;
 
 	modport controller (
 		input  isInvalidated,
