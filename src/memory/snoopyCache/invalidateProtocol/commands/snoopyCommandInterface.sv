@@ -4,17 +4,16 @@ interface SnoopyCommandInterface#(
 )();
 	import commands::*;
 
-	Command snoopyCommandIn, snoopyCommandOut;
-	logic[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumberOut;
-	logic															isInvalidated; 
+	Command commandIn;
+	logic		isInvalidated; 
 
 	modport controller (
-		input  snoopyCommandIn, isInvalidated,
-		output snoopyCommandOut, cacheNumberOut
+		input  commandIn,
+		output isInvalidated
 	);
 	
 	modport bus (
-		input snoopyCommandOut, cacheNumberOut,
-		output snoopyCommandIn, isInvalidated
+		input isInvalidated,
+		output commandIn
 	);
 endinterface : SnoopyCommandInterface
