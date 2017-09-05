@@ -95,7 +95,7 @@ SNOOPY_INVALIDATE_SOURCE_DIRECTORY = $(SNOOPY_SOURCE_DIRECTORY)/invalidateProtoc
 SNOOPY_INVALIDATE_CACHE_UNIT_SOURCE_DIRECTORY     = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/cacheUnit
 SNOOPY_INVALIDATE_CACHE_UNIT_IMPLEMENTAION_SOURCE = $(SNOOPY_INVALIDATE_CACHE_UNIT_SOURCE_DIRECTORY)/*.sv
 
-cache_unit_implementation_source : $(SNOOPY_INVALIDATE_CACHE_UNIT_IMPLEMENTAION_SOURCE)
+snoopy_invalidate_cache_unit_implementation_source : $(SNOOPY_INVALIDATE_CACHE_UNIT_IMPLEMENTAION_SOURCE)
 	$(VLOG) $?
 
 #Replacement algorithm implementation
@@ -134,7 +134,8 @@ SNOOPY_INVALIDATE_DIRECT_MAPPING_CACHE_UNIT_IMPLEMENTATION_SOURCE = $(SNOOPY_INV
 snoopy_invalidate_direct_mapping_cache_unit_implementation_source : $(SNOOPY_INVALIDATE_DIRECT_MAPPING_CACHE_UNIT_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
 
-snoopy_invalidate_direct_mapping_cache_unit_implementation : cache_unit_implementation_source snoopy_invalidate_direct_mapping_cache_unit_implementation_source
+snoopy_invalidate_direct_mapping_cache_unit_implementation : snoopy_invalidate_cache_unit_implementation_source \
+																														 snoopy_invalidate_direct_mapping_cache_unit_implementation_source
 
 #snoopy set associative cache
 SNOOPY_INVALIDATE_SET_ASSOCIATIVE_CACHE_SOURCE_DIRECTORY            = $(SNOOPY_INVALIDATE_CACHE_UNIT_SOURCE_DIRECTORY)/setAssociativeCacheUnit
@@ -148,7 +149,7 @@ snoopy_invalidate_set_associative_cache_implementation_source : $(SNOOPY_INVALID
 	$(VLOG) $?
 
 snoopy_invalidate_set_associative_cache_implementation : invalidate_lru_implementation \
-																												 cache_unit_implementation_source \
+																												 snoopy_invalidate_cache_unit_implementation_source \
 																												 snoopy_invalidate_direct_mapping_cache_unit_implementation_source \
 																												 snoopy_invalidate_set_associative_cache_implementation_source
 
