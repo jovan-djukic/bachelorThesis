@@ -6,7 +6,8 @@ module CacheController#(
 	ReadMemoryInterface.slave snoopySlaveInterface,
 	CacheInterface.controller cacheInterface,
 	ProtocolInterface.controller protocolInterface,
-	CommandInterface.controller commandInterface,
+	CpuCommandInterface.controller cpuCommandInterface,
+	SnoopyCommandInterface.controller snoopyCommandInterface,
 	ArbiterInterface.device cpuArbiterInterface,
 	ArbiterInterface.device snoopyArbiterInterface,
 	output logic accessEnable, invalidateEnable,
@@ -20,7 +21,7 @@ module CacheController#(
 		lock = 0;
 		if (cacheInterface.cpuTagIn == cacheInterface.snoopyTagIn && cacheInterface.cpuIndex == cacheInterface.snoopyIndex &&
 				cacheInterface.cpuHit == 1 && cacheInterface.snoopyHit == 1 &&
-				(cpuSlaveInterface.writeEnabled == 1 || commandInterface.snoopyCommandIn == BUS_INVALIDATE)) begin
+				(cpuSlaveInterface.writeEnabled == 1 || snoopyCommandInterface.snoopyCommandIn == BUS_INVALIDATE)) begin
 			lock = 1;
 		end
 	end
@@ -49,7 +50,7 @@ module CacheController#(
 	assign cacheInterface.cpuDataIn = cacheInterface.cpuHit == 1 ? cpuSlaveInterface.dataOut : cpuMasterInterface.dataIn;
 
 	//cpu controller arbiter assigns
-	assign cpuArbiterInterface.request = commandInterface.cpuCommandOut != NONE ? 1 : 0;
+	assign cpuArbiterInterface.request = cpuCommandInterface.cpuCommandOut != NONE ? 1 : 0;
 
 	//cpu controller master interface assigns
 	assign cpuMasterInterface.address = {masterTag , cacheInterface.cpuIndex, wordCounter};
@@ -125,17 +126,17 @@ module CacheController#(
 	//command invalidate task
 	logic[commandInterface.NUMBER_OF_CACHES - 1 : 0] invalidated;
 	typedef enum logic {
-		INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS,
+		INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS,
 		INVALIDATE_WRITING_STATE
 	} BusInvalidateState;
 	BusInvalidateState invalidatingState;
 
 	task invalidating();
 		case (invalidatingState)
-			INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS: begin
+			INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS: begin
 				if (cpuArbiterInterface.grant == 1) begin
-					if (commandInterface.cpuCommandIn == BUS_INVALIDATE) begin
-						invalidated[commandInterface.cacheNumberIn] <= 1;
+					if (cpuCommandInterface.cpuCommandIn == BUS_INVALIDATE) begin
+						cpuCommandInterface.isInvalidated[commandInterface.cacheNumberIn] <= 1;
 					end
 				end
 
@@ -147,9 +148,8 @@ module CacheController#(
 			end
 
 			INVALIDATE_WRITING_STATE: begin
-				invalidated                  <= 1 << CACHE_ID;
 				cacheInterface.cpuWriteState <= 0;
-				invalidatingState            <= INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS;
+				invalidatingState            <= INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
 				cpuControllerState           <= WAITING_FOR_REQUEST;
 			end
 		endcase
@@ -199,13 +199,13 @@ module CacheController#(
 
 	//reset task
 	task cpuControllerReset();
-			cpuControllerState             <= WAITING_FOR_REQUEST;
-			commandInterface.cpuCommandOut <= NONE;
-			readingBlockState              <= READ_BUS_GRANT_WAIT;
-			wordCounter                    <= 0;
-			invalidated                    <= 1 << CACHE_ID;
-			invalidatingState              <= INVALIDATE_WAITING_FOR_INVALIDATES_ACKNOWLEDGEMENTS;
-			writeBackState                 <= WRITE_BACK_BUS_GRANT_WAIT;
+			cpuControllerState                <= WAITING_FOR_REQUEST;
+			cpuCommandInterface.cpuCommandOut <= NONE;
+			readingBlockState                 <= READ_BUS_GRANT_WAIT;
+			wordCounter                       <= 0;
+			invalidated                       <= 1 << CACHE_ID;
+			invalidatingState                 <= INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
+			writeBackState                    <= WRITE_BACK_BUS_GRANT_WAIT;
 	endtask : cpuControllerReset
 
 	//cpu controller 
@@ -216,7 +216,8 @@ module CacheController#(
 			case (cpuControllerState)
 				//waiting for read or write request
 				WAITING_FOR_REQUEST: begin
-					commandInterface.cpuCommandOut <= NONE;
+					cpuCommandInterface.cpuCommandOut <= NONE;
+					cpuCommandInterface.isInvalidated <= 1 << CACHE_ID;
 					//if request present
 					if (lock != 1 && (cpuSlaveInterface.readEnabled == 1 || cpuSlaveInterface.writeEnabled == 1)) begin
 						//if hit serve request, else read block
@@ -224,8 +225,8 @@ module CacheController#(
 							if (cpuSlaveInterface.writeEnabled == 1) begin
 								if (protocolInterface.invalidateRequired == 1) begin
 									//invalidate on the command
-									cpuControllerState             <= WRITING_BUS_INVALIDATE;
-									commandInterface.cpuCommandOut <= BUS_INVALIDATE;
+									cpuControllerState                <= WRITING_BUS_INVALIDATE;
+									cpuCommandInterface.cpuCommandOut <= BUS_INVALIDATE;
 								end else begin
 									//write MODIFIED even if it is MODIFIED already, no harm
 									cacheInterface.cpuStateIn          <= protocolInterface.cpuStateIn;
@@ -240,11 +241,11 @@ module CacheController#(
 							end
 						end else begin
 							if (protocolInterface.writeBackRequired == 1) begin
-								cpuControllerState             <= WRITING_BACK;
-								commandInterface.cpuCommandOut <= BUS_WRITEBACK;
+								cpuControllerState                <= WRITING_BACK;
+								cpuCommandInterface.cpuCommandOut <= BUS_WRITEBACK;
 							end else begin
-								cpuControllerState             <= READING_BLOCK;
-								commandInterface.cpuCommandOut <= BUS_READ;
+								cpuControllerState                <= READING_BLOCK;
+								cpuCommandInterface.cpuCommandOut <= BUS_READ;
 							end
 						end
 					end	
@@ -291,20 +292,23 @@ module CacheController#(
 	assign cacheInterface.snoopyOffset  = snoopySlaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0];
 	assign cacheInterface.snoopyStateIn = protocolInterface.snoopyStateIn;
 
-	assign snoopyArbiterInterface.request = cacheInterface.snoopyHit;
-
 	assign snoopySlaveInterface.dataIn = cacheInterface.snoopyDataOut;
 		
 	assign protocolInterface.snoopyStateOut  = cacheInterface.snoopyStateOut;
-	assign protocolInterface.snoopyCommandIn = commandInterface.snoopyCommandIn;
+	assign protocolInterface.snoopyCommandIn = snoopyCommandInterface.snoopyCommandIn;
+
+	assign snoopyArbiterInterface.request = cacheInterface.snoopyHit == 1 || 
+																					(snoopyCommandInterface.snoopyCommandIn == BUS_INVALIDATE && snoopyCommandInterface.isInvalidated == 1) ? 1 : 0;
+
+	assign snoopyCommandInterface.cacheNumberOut = CACHE_ID;
 
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
-		commandInterface.snoopyCommandOut     <= NONE;
-		snoopySlaveInterface.functionComplete <= 0;
-		cacheInterface.snoopyWriteState       <= 0;
-		invalidateEnable                      <= 0;
-		case (commandInterface.snoopyCommandIn) 
+		snoopyCommandInterface.snoopyCommandOut <= NONE;
+		snoopySlaveInterface.functionComplete   <= 0;
+		cacheInterface.snoopyWriteState         <= 0;
+		invalidateEnable                        <= 0;
+		case (snoopyCommandInterface.snoopyCommandIn) 
 			BUS_READ: begin
 				if (lock != 1 || cpuControllerState == WAITING_FOR_REQUEST || cpuControllerState == WRITING_BUS_INVALIDATE) begin
 					if (cacheInterface.snoopyHit == 1) begin
@@ -323,8 +327,7 @@ module CacheController#(
 
 			BUS_INVALIDATE: begin
 				if (lock != 1 || cpuControllerState == WAITING_FOR_REQUEST) begin
-					commandInterface.snoopyCommandOut <= BUS_INVALIDATE;
-					commandInterface.cacheNumberOut   <= CACHE_ID;
+					snoopyCommandInterface.snoopyCommandOut <= BUS_INVALIDATE;
 
 					if (snoopyArbiterInterface.grant == 1) begin
 						cacheInterface.snoopyWriteState <= 1;

@@ -10,13 +10,13 @@ package testPackage;
 		DIRTY
 	} CacheLineState;
 
-	localparam ADDRESS_WIDTH            = 32;
-	localparam DATA_WIDTH               = 32;
-	localparam TAG_WIDTH                = 16;
-	localparam INDEX_WIDTH              = 8;
-	localparam OFFSET_WIDTH             = 8;
-	localparam SET_ASSOCIATIVITY        = 4;
-	localparam NUMBER_OF_CACHES         = 8;
+	localparam ADDRESS_WIDTH            = 16;
+	localparam DATA_WIDTH               = 16;
+	localparam TAG_WIDTH                = 8;
+	localparam INDEX_WIDTH              = 4;
+	localparam OFFSET_WIDTH             = 4;
+	localparam SET_ASSOCIATIVITY        = 2;
+	localparam NUMBER_OF_CACHES         = 4;
 	localparam CACHE_NUMBER_WIDTH       = $clog2(NUMBER_OF_CACHES);
 	localparam CACHE_ID								  = 5;
 	localparam type STATE_TYPE          = CacheLineState;
@@ -112,11 +112,12 @@ package testPackage;
 			SnoopyControllerSequenceItem sequenceItem;
 			$cast(sequenceItem, req);
 
-			testInterface.snoopySlaveInterface.address = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
+			testInterface.snoopySlaveInterface.address     = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
+			testInterface.commandInterface.snoopyCommandIn = sequenceItem.busCommand;
 			@(posedge testInterface.clock);
 
 			//if not hit write data to cache
-			if (testInterface.cacheInterface.snoopyHit == 0) begin
+			if (testInterface.cacheInterface.snoopyHit == 0 && testInterface.commandInterface.snoopyCommandIn == BUS_READ) begin
 				testInterface.cacheInterface.cpuTagIn   = sequenceItem.tag;
 				testInterface.cacheInterface.cpuIndex   = sequenceItem.index;
 				testInterface.cacheInterface.cpuStateIn = sequenceItem.cacheState;
@@ -152,7 +153,6 @@ package testPackage;
 				testInterface.cacheInterface.cpuIndex      = {INDEX_WIDTH{1'bz}};
 			end
 
-			testInterface.commandInterface.snoopyCommandIn = sequenceItem.busCommand;
 			@(posedge testInterface.clock);
 
 			case (sequenceItem.busCommand) 
@@ -262,7 +262,7 @@ package testPackage;
 			@(posedge testInterface.clock);
 
 			//if not hit write data to cache
-			if (testInterface.cacheInterface.snoopyHit == 0) begin
+			if (testInterface.cacheInterface.snoopyHit == 0 && testInterface.commandInterface.snoopyCommandIn == BUS_READ) begin
 				//testInterface.cacheInterface.cpuTagIn    = sequenceItem.tag;
 				//testInterface.cacheInterface.cpuIndex    = sequenceItem.index;
 				//testInterface.cacheInterface.cpusStateIn = sequenceItem.cacheState;
@@ -408,7 +408,7 @@ package testPackage;
 			end
 
 			if (errorCounter == 0) begin
-				`uvm_info("TEST_OK", "", UVM_LOW)
+				`uvm_info(collectedItem.busCommand.name(), "TEST_OK", UVM_LOW)
 			end
 		endfunction : checkBehaviour 
 	endclass : SnoopyControllerScoreboard

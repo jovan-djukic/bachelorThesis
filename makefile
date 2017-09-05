@@ -170,7 +170,8 @@ snoopy_invalidate_set_associative_cache_verification : snoopy_invalidate_set_ass
 #snoopy invalidate commands
 SNOOPY_INVALIDATE_COMMANDS_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/commands
 SNOOPY_INVALIDATE_COMMANDS_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_COMMANDS_SOURCE_DIRECTORY)/commands.sv \
-																						 			 $(SNOOPY_INVALIDATE_COMMANDS_SOURCE_DIRECTORY)/commandInterface.sv
+																						 			 $(SNOOPY_INVALIDATE_COMMANDS_SOURCE_DIRECTORY)/cpuCommandInterface.sv \
+																									 $(SNOOPY_INVALIDATE_COMMANDS_SOURCE_DIRECTORY)/snoopyCommandInterface.sv
 
 snoopy_invalidate_commands_implementation_source : $(SNOOPY_INVALIDATE_COMMANDS_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
@@ -258,6 +259,13 @@ snoopy_invalidate_cache_controller_concurrency_test : snoopy_invalidate_set_asso
 																											uvm_basic_test_package_source \
 																											snoopy_invalidate_cache_controller_concurrency_test_source
 	$(MODELSIM_VERIFICATION_COMMAND)
+
+#snoopy bus
+SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/bus
+SNOOPY_INVALIDATE_BUS_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY)/implementation/*.sv
+
+snoopy_invalidate_bus_implementation_source : $(SNOOPY_INVALIDATE_BUS_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
 
 .PHONY : clean
 
