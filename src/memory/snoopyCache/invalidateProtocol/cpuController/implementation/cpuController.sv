@@ -39,30 +39,30 @@ module CPUController(
 
 	//read block task
 	typedef enum logic[2 : 0] {
-		READ_BUS_GRANT_WAIT,
-		READ_WAITING_FOR_FUNCTION_COMPLETE,
-		READ_WRITING_DATA_TO_CACHE,
-		READ_WRITING_TAG_AND_STATE_TO_CACHE
-	} ReadingBlockState;
-	ReadingBlockState readingBlockState;
+		READ_BLOCK_BUS_GRANT_WAIT,
+		READ_BLOCK_WAITING_FOR_FUNCTION_COMPLETE,
+		READ_BLOCK_WRITING_DATA_TO_CACHE,
+		READ_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE
+	} ReadBlockState;
+	ReadBlockState readBlockState;
 	 
 	task readBlock();
-		case (readingBlockState)
-			READ_BUS_GRANT_WAIT: begin
+		case (readBlockState)
+			READ_BLOCK_BUS_GRANT_WAIT: begin
 				if (arbiterInterface.grant == 1) begin
 					masterInterface.readEnabled <= 1;
-					readingBlockState           <= READ_WAITING_FOR_FUNCTION_COMPLETE;
+					readBlockState              <= READ_BLOCK_WAITING_FOR_FUNCTION_COMPLETE;
 				end
 			end	
 			
-			READ_WAITING_FOR_FUNCTION_COMPLETE: begin
+			READ_BLOCK_WAITING_FOR_FUNCTION_COMPLETE: begin
 				if (masterInterface.functionComplete == 1) begin
 					cacheInterface.writeData <= 1;
-					readingBlockState        <= READ_WRITING_DATA_TO_CACHE;
+					readBlockState           <= READ_BLOCK_WRITING_DATA_TO_CACHE;
 				end
 			end
 
-			READ_WRITING_DATA_TO_CACHE: begin
+			READ_BLOCK_WRITING_DATA_TO_CACHE: begin
 				cacheInterface.writeData    <= 0;
 				masterInterface.readEnabled <= 0;
 				wordCounter                 <= wordCounter + 1;
@@ -71,64 +71,64 @@ module CPUController(
 					cacheInterface.writeTag   <= 1;
 					cacheInterface.writeState <= 1;
 
-					readingBlockState <= READ_WRITING_TAG_AND_STATE_TO_CACHE;
+					readBlockState <= READ_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE;
 				end else begin
-					readingBlockState <= READ_BUS_GRANT_WAIT;
+					readBlockState <= READ_BLOCK_BUS_GRANT_WAIT;
 				end
 			end
 
-			READ_WRITING_TAG_AND_STATE_TO_CACHE: begin
+			READ_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE: begin
 				cacheInterface.writeTag   <= 0;
 				cacheInterface.writeState <= 0;
 
-				readingBlockState  <= READ_BUS_GRANT_WAIT;
+				readBlockState  <= READ_BLOCK_BUS_GRANT_WAIT;
 			end
 		endcase	
-	endtask : readBlock;
+	endtask : readBlock
 
 	//command invalidate task
 	typedef enum logic {
-		INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS,
-		INVALIDATE_WRITING_STATE
-	} BusInvalidateState;
-	BusInvalidateState invalidatingState;
+		INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS,
+		INVALIDATE_BLOCK_WRITING_STATE
+	} InvalidateBlockState;
+	InvalidateBlockState invalidateBlockState;
 
-	task invalidating();
-		case (invalidatingState)
-			INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS: begin
+	task invalidateBlock();
+		case (invalidateBlockState)
+			INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS: begin
 				if (arbiterInterface.grant == 1) begin
 					if (commandInterface.isInvalidated == 1) begin
 						cacheInterface.writeState <= 1;
-						invalidatingState         <= INVALIDATE_WRITING_STATE;
+						invalidateBlockState      <= INVALIDATE_BLOCK_WRITING_STATE;
 					end
 				end
 			end
 
-			INVALIDATE_WRITING_STATE: begin
+			INVALIDATE_BLOCK_WRITING_STATE: begin
 				cacheInterface.writeState <= 0;
-				invalidatingState         <= INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
+				invalidateBlockState      <= INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
 			end
 		endcase
-	endtask : invalidating
+	endtask : invalidateBlock
 
 	//write back task
 	typedef enum logic[1 : 0] {
-		WRITE_BACK_BUS_GRANT_WAIT,
-		WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE,
-		WRITE_BACK_WRITING_STATE_TO_CACHE
-	} WriteBackState;
-	WriteBackState writeBackState;
+		WRITE_BACK_BLOCK_BUS_GRANT_WAIT,
+		WRITE_BACK_BLOCK_WAITING_FOR_FUNCTION_COMPLETE,
+		WRITE_BACK_BLOCK_WRITING_STATE_TO_CACHE
+	} WriteBackBlockState;
+	WriteBackBlockState writeBackBlockState;
 
-	task writeBack();
-		case (writeBackState)
-			WRITE_BACK_BUS_GRANT_WAIT: begin
+	task writeBackBlock();
+		case (writeBackBlockState)
+			WRITE_BACK_BLOCK_BUS_GRANT_WAIT: begin
 				if (arbiterInterface.grant == 1) begin
 					masterInterface.writeEnabled <= 1;
-					writeBackState               <= WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE;
+					writeBackBlockState          <= WRITE_BACK_BLOCK_WAITING_FOR_FUNCTION_COMPLETE;
 				end
 			end	
 			
-			WRITE_BACK_WAITING_FOR_FUNCTION_COMPLETE: begin
+			WRITE_BACK_BLOCK_WAITING_FOR_FUNCTION_COMPLETE: begin
 				if (masterInterface.functionComplete == 1) begin
 					masterInterface.writeEnabled <= 0;
 					wordCounter                  <= wordCounter + 1;
@@ -136,19 +136,71 @@ module CPUController(
 					if ((& wordCounter) == 1) begin
 						cacheInterface.writeState <= 1;
 
-						writeBackState <= WRITE_BACK_WRITING_STATE_TO_CACHE;
+						writeBackBlockState <= WRITE_BACK_BLOCK_WRITING_STATE_TO_CACHE;
 					end else begin
-						writeBackState <= WRITE_BACK_BUS_GRANT_WAIT;
+						writeBackBlockState <= WRITE_BACK_BLOCK_BUS_GRANT_WAIT;
 					end
 				end
 			end
 
-			WRITE_BACK_WRITING_STATE_TO_CACHE: begin
+			WRITE_BACK_BLOCK_WRITING_STATE_TO_CACHE: begin
 				cacheInterface.writeState <= 0;
-				writeBackState            <= WRITE_BACK_BUS_GRANT_WAIT;
+				writeBackBlockState       <= WRITE_BACK_BLOCK_BUS_GRANT_WAIT;
 			end
 		endcase	
-	endtask : writeBack;
+	endtask : writeBackBlock;
+
+	//read exclusive block task
+	typedef enum logic[2 : 0] {
+		READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT,
+		READ_EXLUSIVE_BLOCK_WAITING_FOR_FUNCTION_COMPLETE,
+		READ_EXLUSIVE_BLOCK_WRITING_DATA_TO_CACHE,
+		READ_EXLUSIVE_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE
+	} ReadExclusiveBlockState;
+	ReadExclusiveBlockState readExclusiveBlockState;
+	 
+	task readExclusiveBlock();
+		case (readExclusiveBlockState)
+			READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT: begin
+				if (arbiterInterface.grant == 1) begin
+					masterInterface.readEnabled <= 1;
+					readExclusiveBlockState     <= READ_EXLUSIVE_BLOCK_WAITING_FOR_FUNCTION_COMPLETE;
+				end
+			end	
+			
+			READ_EXLUSIVE_BLOCK_WAITING_FOR_FUNCTION_COMPLETE: begin
+				if (masterInterface.functionComplete == 1) begin
+					cacheInterface.writeData <= 1;
+					readExclusiveBlockState  <= READ_EXLUSIVE_BLOCK_WRITING_DATA_TO_CACHE;
+				end
+			end
+
+			READ_EXLUSIVE_BLOCK_WRITING_DATA_TO_CACHE: begin
+				cacheInterface.writeData    <= 0;
+				masterInterface.readEnabled <= 0;
+
+				if ((& wordCounter) == 1) begin
+					if (commandInterface.isInvalidated == 1) begin
+						cacheInterface.writeTag   <= 1;
+						cacheInterface.writeState <= 1;
+						wordCounter               <= wordCounter + 1;
+
+						readExclusiveBlockState <= READ_EXLUSIVE_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE;
+					end
+				end else begin
+					readExclusiveBlockState <= READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT;
+					wordCounter             <= wordCounter + 1;
+				end
+			end
+
+			READ_EXLUSIVE_BLOCK_WRITING_TAG_AND_STATE_TO_CACHE: begin
+				cacheInterface.writeTag   <= 0;
+				cacheInterface.writeState <= 0;
+
+				readExclusiveBlockState  <= READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT;
+			end
+		endcase	
+	endtask : readExclusiveBlock
 
 	task serveRequest();
 		slaveInterface.functionComplete <= 1;
@@ -159,11 +211,12 @@ module CPUController(
 
 	//reset task
 	task cpuControllerReset();
-			readingBlockState <= READ_BUS_GRANT_WAIT;
-			wordCounter       <= 0;
-			invalidatingState <= INVALIDATE_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
-			writeBackState    <= WRITE_BACK_BUS_GRANT_WAIT;
-			accessEnable      <= 0;
+			readBlockState          <= READ_BLOCK_BUS_GRANT_WAIT;
+			wordCounter             <= 0;
+			invalidateBlockState    <= INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
+			writeBackBlockState     <= WRITE_BACK_BLOCK_BUS_GRANT_WAIT;
+			readExclusiveBlockState <= READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT;
+			accessEnable            <= 0;
 	endtask : cpuControllerReset
 
 	logic requestPresent;
@@ -179,6 +232,8 @@ module CPUController(
 				end
 			end else if (protocolInterface.writeBackRequired == 1) begin
 				commandInterface.commandOut = BUS_WRITEBACK;
+			end else if (protocolInterface.readExclusiveRequired == 1) begin
+				commandInterface.commandOut = BUS_READ_EXCLUSIVE;
 			end else begin
 				commandInterface.commandOut = BUS_READ;
 			end
@@ -192,12 +247,14 @@ module CPUController(
 			if (requestPresent == 1) begin
 				if (cacheInterface.hit == 1) begin
 					if (protocolInterface.invalidateRequired == 1) begin
-						invalidating();	
+						invalidateBlock();	
 					end else begin
 						serveRequest();
 					end		
 				end else if (protocolInterface.writeBackRequired == 1) begin
-					writeBack();
+					writeBackBlock();
+				end else if (protocolInterface.readExclusiveRequired == 1) begin
+					readExclusiveBlock();
 				end else begin
 					readBlock();
 				end		

@@ -1,7 +1,6 @@
 module TestBench();
 	import uvm_pkg::*;
 	import testPackage::*;
-	import commands::*;
 
 	TestInterface#(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
@@ -10,29 +9,42 @@ module TestBench();
 		.INDEX_WIDTH(INDEX_WIDTH),
 		.OFFSET_WIDTH(OFFSET_WIDTH),
 		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
-		.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
-		.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH),
 		.STATE_TYPE(STATE_TYPE),
 		.INVALID_STATE(INVALID_STATE)
 	) testInterface();
 
 	always #5 testInterface.clock = ~testInterface.clock;
 
-	CacheController cacheController(
-		.cpuSlaveInterface(testInterface.cpuSlaveInterface),
-		.cpuMasterInterface(testInterface.cpuMasterInterface),
-		.snoopySlaveInterface(testInterface.snoopySlaveInterface),
+	SnoopyController snoopyController(
+		.slaveInterface(testInterface.slaveInterface),
 		.cacheInterface(testInterface.cacheInterface),
 		.protocolInterface(testInterface.protocolInterface),
 		.commandInterface(testInterface.commandInterface),
-		.cpuArbiterInterface(testInterface.cpuArbiterInterface),
-		.snoopyArbiterInterface(testInterface.snoopyArbiterInterface),
+		.arbiterInterface(testInterface.arbiterInterface),
+		.invalidateEnable(testInterface.invalidateEnable),
+		.reset(testInterface.reset),
+		.clock(testInterface.clock)
+	);
+
+	SetAssociativeCacheUnit#(
+		.STATE_TYPE(STATE_TYPE)
+	) setAssociativeCacheUnit(
+		.cpuCacheInterface(testInterface.cpuCacheInterface),
+		.snoopyCacheInterface(testInterface.cacheInterface),
 		.accessEnable(testInterface.accessEnable),
 		.invalidateEnable(testInterface.invalidateEnable),
 		.clock(testInterface.clock),
 		.reset(testInterface.reset)
 	);
 
+	CPUProtocolInterface#(
+		.STATE_TYPE(STATE_TYPE)
+	) cpuProtocolInterface();
+
+	WriteThroughInvalidate writeThroughInvalidate(
+		.cpuProtocolInterface(cpuProtocolInterface),
+		.snoopyProtocolInterface(testInterface.protocolInterface)
+	);
 
 	initial begin
 			
@@ -43,12 +55,10 @@ module TestBench();
 			.INDEX_WIDTH(INDEX_WIDTH),
 			.OFFSET_WIDTH(OFFSET_WIDTH),
 			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
-			.NUMBER_OF_CACHES(NUMBER_OF_CACHES),
-			.CACHE_NUMBER_WIDTH(CACHE_NUMBER_WIDTH),
 			.STATE_TYPE(STATE_TYPE),
 			.INVALID_STATE(INVALID_STATE)
 		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
 
-		run_test("ConcurrencyTest");
+		run_test("SnoopyControllerTest");
 	end
 endmodule : TestBench

@@ -5,14 +5,15 @@ interface SnoopyProtocolInterface#(
 
 	STATE_TYPE stateIn, stateOut;
 	Command 	 commandIn;
+	logic request;
 
 	modport controller(
-		input stateIn,
+		input stateIn, request,
 		output stateOut, commandIn
 	);
 
 	modport protocol (
 		input  stateOut, commandIn,
-		output stateIn
+		output stateIn, request
 	);
 endinterface : SnoopyProtocolInterface

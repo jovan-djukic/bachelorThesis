@@ -204,7 +204,7 @@ snoopy_invalidate_cpu_controller_implementation : memory_implementation_source \
 #write through invalidate protocol for testing
 SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/writeThroughInvalidate
 SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE = $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/states.sv \
-																									      $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/wti.sv 
+																									      $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/writeThroughInvalidate.sv 
 
 snoopy_write_through_invalidate_implementation_source : $(SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
@@ -227,36 +227,61 @@ snoopy_invalidate_cpu_controller_verification : snoopy_invalidate_set_associativ
 																								snoopy_invalidate_cpu_controller_verification_source
 	$(MODELSIM_VERIFICATION_COMMAND)
 
+#snoopy invalidate cpu controller implementation
+SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/snoopyController
+SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_SOURCE_DIRECTORY)/implementation/*.sv
+
+snoopy_invalidate_snoopy_controller_implementation_source : $(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_invalidate_snoopy_controller_implementation : memory_implementation_source \
+ 												 														 snoopy_invalidate_cache_unit_implementation_source \
+												 														 snoopy_invalidate_commands_implementation_source \
+												 														 snoopy_invalidate_protocol_implementation_source \
+												 														 arbiter_implementation_source \
+												 														 snoopy_invalidate_snoopy_controller_implementation_source
 
 #snoopy controller test
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_SOURCE_DIRECTORY)/snoopyControllerTest
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE_DIRECTORY)/testInterface.sv \
-																																	 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE_DIRECTORY)/testPackage.sv \
-																																	 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE_DIRECTORY)/testBench.sv
+SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_VERIFICATION_SOURCE = $(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																													$(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																													$(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_SOURCE_DIRECTORY)/verification/testBench.sv
 	
-snoopy_invalidate_cache_controller_snoopy_controller_test_source : $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_SNOOPY_CONTROLLER_TEST_SOURCE)
+snoopy_invalidate_snoopy_controller_verification_source : $(SNOOPY_INVALIDATE_SNOOPY_CONTROLLER_VERIFICATION_SOURCE)
 	$(UVM_COMMAND) $? 
 
-snoopy_invalidate_cache_controller_snoopy_controller_test : snoopy_invalidate_set_associative_cache_implementation \
-																												 		snoopy_invalidate_cache_controller_implementation \
-																												 		uvm_basic_test_package_source \
-																												 		snoopy_invalidate_cache_controller_snoopy_controller_test_source
+snoopy_invalidate_snoopy_controller_verification : snoopy_invalidate_set_associative_cache_implementation \
+																									 snoopy_write_through_invalidate_implementation \
+																									 snoopy_invalidate_snoopy_controller_implementation \
+																									 uvm_basic_test_package_source \
+																									 snoopy_invalidate_snoopy_controller_verification_source
 	$(MODELSIM_VERIFICATION_COMMAND)
 
-#concurrency test
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE_DIRECTORY = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_VERIFICATION_SOURCE_DIRECTORY)/concurrencyTest
-SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE           = $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE_DIRECTORY)/cases.sv \
-																																			 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE_DIRECTORY)/testInterface.sv \
-																																			 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE_DIRECTORY)/testPackage.sv \
-																																			 $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE_DIRECTORY)/testBench.sv
+#concurrency lock
+SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/concurrencyLock
+SNOOPY_INVALIDATE_CONCURRENCY_LOCK_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY)/implementation/*.sv
+
+snoopy_invalidate_concurrency_lock_implementation_source : $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_invalidate_concurrency_lock_implementation : memory_implementation_source \
+																										snoopy_invalidate_commands_implementation_source \
+																										arbiter_implementation_source \
+																										snoopy_invalidate_concurrency_lock_implementation_source
 	
-snoopy_invalidate_cache_controller_concurrency_test_source : $(SNOOPY_INVALIDATE_CACHE_CONTROLLER_CONCURRENCY_TEST_SOURCE)
+SNOOPY_INVALIDATE_CONCURRENCY_LOCK_VERIFICATION_SOURCE = $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY)/verification/cases.sv \
+																												 $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																												 $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																												 $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_SOURCE_DIRECTORY)/verification/testBench.sv
+
+snoopy_invalidate_concurrency_lock_verification_source : $(SNOOPY_INVALIDATE_CONCURRENCY_LOCK_VERIFICATION_SOURCE)
 	$(UVM_COMMAND) $? 
 
-snoopy_invalidate_cache_controller_concurrency_test : snoopy_invalidate_set_associative_cache_implementation \
-																											snoopy_invalidate_cache_controller_implementation \
-																											uvm_basic_test_package_source \
-																											snoopy_invalidate_cache_controller_concurrency_test_source
+snoopy_invalidate_concurrency_lock_verification : memory_implementation_source \
+																									snoopy_invalidate_commands_implementation_source \
+																									arbiter_implementation_source \
+																									snoopy_invalidate_concurrency_lock_implementation \
+																									uvm_basic_test_package_source \
+																								  snoopy_invalidate_concurrency_lock_verification_source																									
 	$(MODELSIM_VERIFICATION_COMMAND)
 
 #snoopy bus

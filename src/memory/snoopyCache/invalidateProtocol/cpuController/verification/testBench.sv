@@ -49,8 +49,13 @@ module TestBench();
 		.reset(testInterface.reset)
 	);
 
+	SnoopyProtocolInterface#(
+		.STATE_TYPE(STATE_TYPE)
+	) snoopyProtocolInterface();
+
 	WriteThroughInvalidate writeThroughInvalidate(
-		.cpuProtocolInterface(testInterface.protocolInterface)
+		.cpuProtocolInterface(testInterface.protocolInterface),
+		.snoopyProtocolInterface(snoopyProtocolInterface)
 	);
 
 	initial begin

@@ -122,11 +122,18 @@ package testPackage;
 
 					testInterface.arbiterInterface.grant = 0;
 					//there is not NONE command since we immediatelly move to read
+					
+					//wait for data to sync in
+					@(posedge testInterface.clock);
 				end
 
 				//bus read
-				wait (testInterface.commandInterface.commandOut == BUS_READ);
-				wait (testInterface.arbiterInterface.request    == 1);
+				if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+					wait (testInterface.commandInterface.commandOut == BUS_READ_EXCLUSIVE);
+				end else begin
+					wait (testInterface.commandInterface.commandOut == BUS_READ);
+				end
+				wait (testInterface.arbiterInterface.request == 1);
 
 				testInterface.arbiterInterface.grant = 1;
 
@@ -143,11 +150,19 @@ package testPackage;
 					testInterface.masterInterface.functionComplete = 0;
 				end		
 
+				if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+					testInterface.commandInterface.isInvalidated = 1;
+				end
+
 				wait (testInterface.cacheInterface.writeTag   == 1);
 				wait (testInterface.cacheInterface.writeState == 1);
 				wait (testInterface.cacheInterface.writeTag   == 0);
 				wait (testInterface.cacheInterface.writeState == 0);
 				
+				if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+					testInterface.commandInterface.isInvalidated = 0;
+				end
+
 				testInterface.arbiterInterface.grant = 0;
 
 				//wait for tag and state to sync in
@@ -341,11 +356,18 @@ package testPackage;
 
 					//testInterface.arbiterInterface.grant = 0;
 					//there is not NONE command since we immediatelly move to read
+
+					//wait for data to sync in
+					@(posedge testInterface.clock);
 				end
 
 				//bus read
-				wait (testInterface.commandInterface.commandOut == BUS_READ);
-				wait (testInterface.arbiterInterface.request    == 1);
+				if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+					wait (testInterface.commandInterface.commandOut == BUS_READ_EXCLUSIVE);
+				end else begin
+					wait (testInterface.commandInterface.commandOut == BUS_READ);
+				end
+				wait (testInterface.arbiterInterface.request == 1);
 
 				//testInterface.arbiterInterface.grant = 1;
 
@@ -366,6 +388,10 @@ package testPackage;
 
 					//testInterface.masterInterface.functionComplete = 0;
 				end		
+				
+				//if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+				//	testInterface.commandInterface.isInvalidated = 1;
+				//end
 
 				wait (testInterface.cacheInterface.writeTag   == 1);
 				wait (testInterface.cacheInterface.writeState == 1);
@@ -376,6 +402,9 @@ package testPackage;
 				wait (testInterface.cacheInterface.writeTag   == 0);
 				wait (testInterface.cacheInterface.writeState == 0);
 				
+				//if (testInterface.protocolInterface.readExclusiveRequired == 1) begin
+				//	testInterface.commandInterface.isInvalidated = 0;
+				//end
 				//testInterface.arbiterInterface.grant = 0;
 
 				//wait for tag and state to sync in
