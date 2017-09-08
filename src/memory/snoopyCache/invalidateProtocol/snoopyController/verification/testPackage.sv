@@ -13,6 +13,7 @@ package testPackage;
 	localparam SET_ASSOCIATIVITY        = 2;
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
+	localparam STATE_TYPE OWNED_STATE		= DIRTY;
 	localparam SEQUENCE_ITEM_COUNT      = 1000;
 	localparam TEST_INTERFACE           = "TestInterface";
 
@@ -118,7 +119,8 @@ package testPackage;
 			if (testInterface.cacheInterface.hit == 0 && testInterface.commandInterface.commandIn == BUS_READ) begin
 				testInterface.cpuCacheInterface.tagIn   = sequenceItem.tag;
 				testInterface.cpuCacheInterface.index   = sequenceItem.index;
-				testInterface.cpuCacheInterface.stateIn = sequenceItem.state;
+				//testInterface.cpuCacheInterface.stateIn = sequenceItem.state;
+				testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
 
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
 					testInterface.cpuCacheInterface.offset    = i;
@@ -150,6 +152,22 @@ package testPackage;
 				testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
 				testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
 			
+				@(posedge testInterface.clock);
+			end else if (testInterface.cacheInterface.hit == 1 && 
+									 testInterface.cacheInterface.stateOut != OWNED_STATE && 
+									 (testInterface.commandInterface.commandIn == BUS_READ || testInterface.commandInterface.commandIn == BUS_READ_EXCLUSIVE)) begin
+				testInterface.cpuCacheInterface.tagIn   = sequenceItem.tag;
+				testInterface.cpuCacheInterface.index   = sequenceItem.index;
+				testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
+				testInterface.cpuCacheInterface.writeState = 1;
+
+				repeat (2) begin
+					@(posedge testInterface.clock);
+				end
+
+				testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
+				testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
+				testInterface.cpuCacheInterface.writeState = 1'bz;
 				@(posedge testInterface.clock);
 			end
 
@@ -339,7 +357,20 @@ package testPackage;
 				//testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
 
 				@(posedge testInterface.clock);
+			end else if (testInterface.cacheInterface.hit == 1 && 
+									 testInterface.cacheInterface.stateOut != OWNED_STATE && 
+									 testInterface.commandInterface.commandIn == BUS_READ) begin
+				//testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
+				//testInterface.cpuCacheInterface.writeState = 1;
+
+				repeat (2) begin
+					@(posedge testInterface.clock);
+				end
+
+				//testInterface.cpuCacheInterface.writeState = 1'bz;
+				@(posedge testInterface.clock);
 			end
+
 
 			collectedItem.commandIn         = testInterface.commandInterface.commandIn;
 			collectedItem.protocolCommandIn = testInterface.protocolInterface.commandIn;
