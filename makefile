@@ -291,6 +291,24 @@ SNOOPY_INVALIDATE_BUS_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_BUS_SOURCE_DIR
 snoopy_invalidate_bus_implementation_source : $(SNOOPY_INVALIDATE_BUS_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
 
+snoopy_invalidate_bus_implementation : memory_implementation_source \
+																			 snoopy_invalidate_commands_implementation_source \
+																			 snoopy_invalidate_bus_implementation_source
+
+SNOOPY_INVALIDATE_BUS_VERIFICATION_SOURCE = $(SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY)/verification/types.sv \
+																						$(SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																						$(SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																						$(SNOOPY_INVALIDATE_BUS_SOURCE_DIRECTORY)/verification/testBench.sv
+
+snoopy_invalidate_bus_verification_source : $(SNOOPY_INVALIDATE_BUS_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+snoopy_invalidate_bus_verification : memory_implementation_source \
+																		 snoopy_invalidate_commands_implementation_source \
+																		 snoopy_invalidate_bus_implementation \
+																		 uvm_basic_test_package_source \
+																		 snoopy_invalidate_bus_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
 .PHONY : clean
 
 clean : 
