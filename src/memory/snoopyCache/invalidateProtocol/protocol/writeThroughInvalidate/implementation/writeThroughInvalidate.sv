@@ -36,7 +36,7 @@ module WriteThroughInvalidate(
 	end
 
 	//snoopy protocol table
-	assign snoopyProtocolInterface.request = snoopyProtocolInterface.stateOut != INVALID ? 1 : 0;
+	assign snoopyProtocolInterface.request = snoopyProtocolInterface.stateOut == DIRTY ? 1 : 0;
 	
 	always_comb begin
 		if (snoopyProtocolInterface.commandIn == BUS_READ) begin
