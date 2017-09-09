@@ -309,6 +309,37 @@ snoopy_invalidate_bus_verification : memory_implementation_source \
 																		 uvm_basic_test_package_source \
 																		 snoopy_invalidate_bus_verification_source
 	$(MODELSIM_VERIFICATION_COMMAND)
+
+#moesif invalidate protocol for testing
+SNOOPY_MOESIF_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/moesif
+SNOOPY_MOESIF_IMPLEMENTATION_SOURCE = $(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/states.sv \
+																			$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/moesifInterface.sv \
+																			$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/moesif.sv 
+
+snoopy_moesif_implementation_source : $(SNOOPY_MOESIF_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_moesif_implementation : snoopy_invalidate_protocol_implementation \
+															 snoopy_moesif_implementation_source
+
+SNOOPY_MOESIF_CLASS_IMPLEMENTATION_SOURCE = $(SNOOPY_MOESIF_SOURCE_DIRECTORY)/classImplementation/*.sv
+
+snoopy_moesif_class_implementation_source : $(SNOOPY_MOESIF_CLASS_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+SNOOPY_MOESIF_VERIFICATION_SOURCE = $(SNOOPY_MOESIF_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																		$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																		$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/verification/testBench.sv
+
+snoopy_moesif_verification_source : $(SNOOPY_MOESIF_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+snoopy_moesif_verification : snoopy_moesif_implementation \
+														 snoopy_moesif_class_implementation_source \
+														 uvm_basic_test_package_source \
+														 snoopy_moesif_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
 .PHONY : clean
 
 clean : 
