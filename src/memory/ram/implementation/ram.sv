@@ -1,14 +1,15 @@
 module RAM#(
-	int SIZE_IN_WORDS		 = 1024,
-	int DELAY						 = 4,
-	int COUNTER_WIDTH		 = $clog2(DELAY),
-	string	INIT_FILE 	 = ""
+	int DATA_WIDTH    = 16,
+	int SIZE_IN_WORDS = 1024,
+	int DELAY         = 4,
+	int COUNTER_WIDTH = $clog2(DELAY),
+	string	INIT_FILE = ""
 )(
 	MemoryInterface.slave memoryInterface,
 	input logic clock
 );
 
-	logic [memoryInterface.DATA_WIDTH - 1	: 0] memory[SIZE_IN_WORDS];
+	logic [DATA_WIDTH - 1	: 0] memory[SIZE_IN_WORDS];
 
 	//delay
 	logic [COUNTER_WIDTH - 1 : 0] 					   counter;

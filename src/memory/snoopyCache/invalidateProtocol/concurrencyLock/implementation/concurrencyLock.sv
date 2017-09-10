@@ -1,5 +1,6 @@
 module ConcurrencyLock#(
-	int OFFSET_WIDTH = 4
+	int ADDRESS_WIDTH = 16,
+	int OFFSET_WIDTH  = 4
 )(
 	MemoryInterface.slave cpuSlaveMemoryInterface,
 	MemoryInterface.master cpuMasterMemoryInterface,
@@ -9,11 +10,11 @@ module ConcurrencyLock#(
 	ArbiterInterface.device cpuDeviceArbiterInterface,
 	SnoopyCommandInterface.bus snoopyBusCommandInterface,
 	SnoopyCommandInterface.controller snoopyControllerCommandInterface,
-	ReadMemoryInterface.slave snoopySlaveReadMemoryInterface,
 	ReadMemoryInterface.master snoopyMasterReadMemoryInterface,
+	ReadMemoryInterface.slave snoopySlaveReadMemoryInterface,
 	input logic cpuHit, snoopyHit
 );
-	localparam ADDRESS_WIDTH = cpuSlaveMemoryInterface.ADDRESS_WIDTH;
+	//localparam ADDRESS_WIDTH = cpuSlaveMemoryInterface.ADDRESS_WIDTH;
 	
 	import commands::*;
 	

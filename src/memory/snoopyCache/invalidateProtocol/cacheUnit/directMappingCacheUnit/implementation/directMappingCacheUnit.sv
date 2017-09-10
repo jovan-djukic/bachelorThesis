@@ -1,18 +1,24 @@
 module DirectMappingCacheUnit#(
-	int CACHE_NUMBER = 0,
-	type STATE_TYPE  = logic[1 : 0]
+	int TAG_WIDTH            = 6,
+	int INDEX_WIDTH          = 6,
+	int OFFSET_WIDTH         = 4,
+	int SET_ASSOCIATIVITY    = 2,
+	int DATA_WIDTH           = 16,
+	type STATE_TYPE          = logic[1 : 0],
+	STATE_TYPE INVALID_STATE = 2'b0,
+	int CACHE_NUMBER         = 0
 )(
 	CPUCacheInterface.cache cpuCacheInterface,
 	SnoopyCacheInterface.cache snoopyCacheInterface,
 	input clock, reset
 );
 
-	localparam NUMBER_OF_CACHE_LINES    = 1 << cpuCacheInterface.INDEX_WIDTH;
-	localparam NUMBER_OF_WORDS_PER_LINE = 1 << cpuCacheInterface.OFFSET_WIDTH;
+	localparam NUMBER_OF_CACHE_LINES    = 1 << INDEX_WIDTH;
+	localparam NUMBER_OF_WORDS_PER_LINE = 1 << OFFSET_WIDTH;
 
 	STATE_TYPE states[NUMBER_OF_CACHE_LINES];
-	logic[cpuCacheInterface.TAG_WIDTH - 1  : 0] tags[NUMBER_OF_CACHE_LINES];
-	logic[cpuCacheInterface.DATA_WIDTH - 1 : 0] data[NUMBER_OF_CACHE_LINES][NUMBER_OF_WORDS_PER_LINE];
+	logic[TAG_WIDTH - 1  : 0] tags[NUMBER_OF_CACHE_LINES];
+	logic[DATA_WIDTH - 1 : 0] data[NUMBER_OF_CACHE_LINES][NUMBER_OF_WORDS_PER_LINE];
 
 	//cache number assign
 	assign cpuCacheInterface.cacheNumber    = CACHE_NUMBER;
@@ -21,19 +27,18 @@ module DirectMappingCacheUnit#(
 	//cpu controller assigns
 	assign cpuCacheInterface.tagOut   = tags[cpuCacheInterface.index];
 	assign cpuCacheInterface.stateOut = states[cpuCacheInterface.index];
-	assign cpuCacheInterface.hit      = cpuCacheInterface.tagOut == cpuCacheInterface.tagIn && cpuCacheInterface.stateOut != cpuCacheInterface.INVALID_STATE ? 1 : 0;
+	assign cpuCacheInterface.hit      = cpuCacheInterface.tagOut == cpuCacheInterface.tagIn && cpuCacheInterface.stateOut != INVALID_STATE ? 1 : 0;
 	assign cpuCacheInterface.dataOut  = data[cpuCacheInterface.index][cpuCacheInterface.offset];
 	
 	//snoopy controller assigns
 	assign snoopyCacheInterface.stateOut = states[snoopyCacheInterface.index];
-	assign snoopyCacheInterface.hit      = snoopyCacheInterface.tagIn == tags[snoopyCacheInterface.index] && 
-																				 snoopyCacheInterface.stateOut != snoopyCacheInterface.INVALID_STATE ? 1 : 0;
+	assign snoopyCacheInterface.hit      = snoopyCacheInterface.tagIn == tags[snoopyCacheInterface.index] && snoopyCacheInterface.stateOut != INVALID_STATE ? 1 : 0;
 	assign snoopyCacheInterface.dataOut  = data[snoopyCacheInterface.index][snoopyCacheInterface.offset];
 
 	always_ff @(posedge clock, reset) begin
 		if (reset == 1) begin
 			for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
-				states[i] <= cpuCacheInterface.INVALID_STATE;
+				states[i] <= INVALID_STATE;
 			end
 		end else begin
 			//cpu controller writes

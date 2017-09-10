@@ -1,25 +1,32 @@
 //these are adjusted parameters
 module SetAssociativeCacheUnit#(
-	type STATE_TYPE          = logic[1 : 0]
+	int TAG_WIDTH            = 6,
+	int INDEX_WIDTH          = 6,
+	int OFFSET_WIDTH         = 4,
+	int SET_ASSOCIATIVITY    = 2,
+	int DATA_WIDTH           = 16,
+	type STATE_TYPE          = logic[1 : 0],
+	STATE_TYPE INVALID_STATE = 2'b0,
+	int CACHE_NUMBER         = 0
 )(
 	CPUCacheInterface.cache cpuCacheInterface,
 	SnoopyCacheInterface.cache snoopyCacheInterface,
 	input logic accessEnable, invalidateEnable,
 	input logic clock, reset
 );
-
+	localparam NUMBER_OF_CACHE_LINES = 1 << SET_ASSOCIATIVITY;
 	//generate variables
 	genvar i;
 	//REPLACEMENT_ALGORITHM_BEGIN
 	//parameters need for replacement algorithms
-	localparam NUMBER_OF_CACHE_LINES = 1 << cpuCacheInterface.SET_ASSOCIATIVITY;
 
 	ReplacementAlgorithmInterface#(
 		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)	
 	) replacementAlgorithmInterface();
 
 	SetAssociativeLRU#(
-		.INDEX_WIDTH(cpuCacheInterface.INDEX_WIDTH)
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 	) setAssociativeLRU(
 		.replacementAlgorithmInterface(replacementAlgorithmInterface),
 		.cpuIndexIn(cpuCacheInterface.index),
@@ -38,26 +45,26 @@ module SetAssociativeCacheUnit#(
 
 	//CACHE_UNITS_BEGIN
 	//parameters required for cache units
-	localparam NUMBER_OF_SMALLER_CACHES = 1 << cpuCacheInterface.SET_ASSOCIATIVITY;
+	localparam NUMBER_OF_SMALLER_CACHES = 1 << SET_ASSOCIATIVITY;
 
 	CPUCacheInterface#(
-		.TAG_WIDTH(cpuCacheInterface.TAG_WIDTH),
-		.INDEX_WIDTH(cpuCacheInterface.INDEX_WIDTH),
-		.OFFSET_WIDTH(cpuCacheInterface.OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(cpuCacheInterface.SET_ASSOCIATIVITY),
-		.DATA_WIDTH(cpuCacheInterface.DATA_WIDTH),
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.DATA_WIDTH(DATA_WIDTH),
 		.STATE_TYPE(STATE_TYPE),
-		.INVALID_STATE(cpuCacheInterface.INVALID_STATE)
+		.INVALID_STATE(INVALID_STATE)
 	) cpuCacheInterfaces[NUMBER_OF_SMALLER_CACHES]();
 	
 	SnoopyCacheInterface#(
-		.TAG_WIDTH(snoopyCacheInterface.TAG_WIDTH),
-		.INDEX_WIDTH(snoopyCacheInterface.INDEX_WIDTH),
-		.OFFSET_WIDTH(snoopyCacheInterface.OFFSET_WIDTH),
-		.SET_ASSOCIATIVITY(snoopyCacheInterface.SET_ASSOCIATIVITY),
-		.DATA_WIDTH(snoopyCacheInterface.DATA_WIDTH),
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.DATA_WIDTH(DATA_WIDTH),
 		.STATE_TYPE(STATE_TYPE),
-		.INVALID_STATE(snoopyCacheInterface.INVALID_STATE)
+		.INVALID_STATE(INVALID_STATE)
 	) snoopyCacheInterfaces[NUMBER_OF_SMALLER_CACHES]();
 
 	//input signals assigns
@@ -65,8 +72,14 @@ module SetAssociativeCacheUnit#(
 		for (i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			//generate modules
 			DirectMappingCacheUnit#(
-				.CACHE_NUMBER(i),
-				.STATE_TYPE(STATE_TYPE)
+				.TAG_WIDTH(TAG_WIDTH),
+				.INDEX_WIDTH(INDEX_WIDTH),
+				.OFFSET_WIDTH(OFFSET_WIDTH),
+				.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+				.DATA_WIDTH(DATA_WIDTH),
+				.STATE_TYPE(STATE_TYPE),
+				.INVALID_STATE(INVALID_STATE),
+				.CACHE_NUMBER(i)
 			) directMappingCacheUnit(
 				.cpuCacheInterface(cpuCacheInterfaces[i]),
 				.snoopyCacheInterface(snoopyCacheInterfaces[i]),
@@ -138,9 +151,9 @@ module SetAssociativeCacheUnit#(
 
 	//multiplexers for out signals
 	//helper signals 
-	logic[cpuCacheInterface.TAG_WIDTH - 1         : 0] cpuTagOuts[NUMBER_OF_SMALLER_CACHES];
-	logic[cpuCacheInterface.DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES], snoopyDataOuts[NUMBER_OF_SMALLER_CACHES];
-	logic[cpuCacheInterface.SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumbers[NUMBER_OF_SMALLER_CACHES], snoopyCacheNumbers[NUMBER_OF_SMALLER_CACHES];
+	logic[TAG_WIDTH - 1         : 0] cpuTagOuts[NUMBER_OF_SMALLER_CACHES];
+	logic[DATA_WIDTH - 1        : 0] cpuDataOuts[NUMBER_OF_SMALLER_CACHES], snoopyDataOuts[NUMBER_OF_SMALLER_CACHES];
+	logic[SET_ASSOCIATIVITY - 1 : 0] cpuCacheNumbers[NUMBER_OF_SMALLER_CACHES], snoopyCacheNumbers[NUMBER_OF_SMALLER_CACHES];
 	STATE_TYPE cpuStateOuts[NUMBER_OF_SMALLER_CACHES], snoopyStateOuts[NUMBER_OF_SMALLER_CACHES];
 
 	generate
@@ -184,7 +197,7 @@ module SetAssociativeCacheUnit#(
 	always_comb begin
 		cpuCacheInterface.tagOut   = 0; 
 		cpuCacheInterface.dataOut  = 0;
-		cpuCacheInterface.stateOut = cpuCacheInterface.INVALID_STATE;
+		cpuCacheInterface.stateOut = INVALID_STATE;
 
 		for (int i = 0; i < NUMBER_OF_SMALLER_CACHES; i++) begin
 			if (cpuCacheInterface.cacheNumber == i) begin
@@ -197,7 +210,7 @@ module SetAssociativeCacheUnit#(
 
 	//snoopy controller multiplexer
 	always_comb begin
-		snoopyCacheInterface.stateOut = snoopyCacheInterface.INVALID_STATE;
+		snoopyCacheInterface.stateOut = INVALID_STATE;
 		snoopyCacheInterface.dataOut  = 0;
 
 		for (int i = 0; i< NUMBER_OF_SMALLER_CACHES; i++) begin

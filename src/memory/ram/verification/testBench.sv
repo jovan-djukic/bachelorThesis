@@ -7,6 +7,7 @@ module TestBench();
 	always #5 testInterface.clock = ~testInterface.clock;
 
 	RAM#(
+		.DATA_WIDTH(DATA_WIDTH),
 		.SIZE_IN_WORDS(SIZE),
 		.DELAY(4)
 	) ram(

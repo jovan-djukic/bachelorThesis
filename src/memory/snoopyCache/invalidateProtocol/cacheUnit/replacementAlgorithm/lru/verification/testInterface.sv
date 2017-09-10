@@ -1,9 +1,7 @@
 interface TestInterface#(
-	int INDEX_WIDTH				= 6,
-	int SET_ASSOCIATIVITY	= 2	
+	int INDEX_WIDTH           = 6,
+	int NUMBER_OF_CACHE_LINES = 4
 )();
-
-	localparam NUMBER_OF_CACHE_LINES = 1 << SET_ASSOCIATIVITY;
 
 	ReplacementAlgorithmInterface#(
 		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)

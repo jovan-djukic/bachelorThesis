@@ -1,5 +1,6 @@
 module SetAssociativeLRU#(
-	int INDEX_WIDTH = 6
+	int INDEX_WIDTH           = 6,
+	int NUMBER_OF_CACHE_LINES = 4
 )(
 	ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
 	input logic[INDEX_WIDTH - 1 : 0] cpuIndexIn, snoopyIndexIn,
@@ -9,10 +10,12 @@ module SetAssociativeLRU#(
 	localparam NUMBER_INDIVIDUAL_LRUS	=	1 << INDEX_WIDTH;
 
 	ReplacementAlgorithmInterface#(
-		.NUMBER_OF_CACHE_LINES(replacementAlgorithmInterface.NUMBER_OF_CACHE_LINES)
+		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 	) replacementAlgorithmInterfaces[NUMBER_INDIVIDUAL_LRUS]();
 
-	LRU lrus[NUMBER_INDIVIDUAL_LRUS] (
+	LRU#(
+		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
+	) lrus[NUMBER_INDIVIDUAL_LRUS] (
 		.replacementAlgorithmInterface(replacementAlgorithmInterfaces),
 		.clock(clock),
 		.reset(reset)

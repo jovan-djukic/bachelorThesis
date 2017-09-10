@@ -15,7 +15,13 @@ module TestBench();
 	always #5 testInterface.clock = ~testInterface.clock;
 
 	SetAssociativeCacheUnit#(
-		.STATE_TYPE(STATE_TYPE)
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.DATA_WIDTH(DATA_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)				
 	)	setAssociativeCacheUnit(
 		.cpuCacheInterface(testInterface.cpuCacheInterface),
 		.snoopyCacheInterface(testInterface.snoopyCacheInterface),

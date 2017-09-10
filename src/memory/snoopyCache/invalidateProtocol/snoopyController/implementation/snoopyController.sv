@@ -1,4 +1,8 @@
-module SnoopyController(
+module SnoopyController#(
+	int OFFSET_WIDTH = 4,
+	int INDEX_WIDTH  = 4,
+	int TAG_WIDTH    = 8
+)(
 	ReadMemoryInterface.slave slaveInterface,
 	SnoopyCacheInterface.controller cacheInterface,
 	SnoopyProtocolInterface.controller protocolInterface,
@@ -9,9 +13,9 @@ module SnoopyController(
 );
 	import commands::*;
 
-	assign cacheInterface.tagIn   = slaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
-	assign cacheInterface.index   = slaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
-	assign cacheInterface.offset  = slaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0];
+	assign cacheInterface.tagIn   = slaveInterface.address[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH];
+	assign cacheInterface.index   = slaveInterface.address[OFFSET_WIDTH +: INDEX_WIDTH];
+	assign cacheInterface.offset  = slaveInterface.address[OFFSET_WIDTH - 1 : 0];
 	assign cacheInterface.stateIn = protocolInterface.stateIn;
 
 	assign slaveInterface.dataIn = cacheInterface.dataOut;
@@ -58,7 +62,7 @@ module SnoopyController(
 						end 
 					end
 				end
-				if ((arbiterInterface.grant == 0 || (& slaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0]) == 1) && commandInterface.isInvalidated == 0) begin
+				if ((arbiterInterface.grant == 0 || (& slaveInterface.address[OFFSET_WIDTH - 1 : 0]) == 1) && commandInterface.isInvalidated == 0) begin
 					cacheInterface.writeState <= 1;
 					invalidateEnable          <= 1;
 				end

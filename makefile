@@ -340,9 +340,44 @@ snoopy_moesif_verification : snoopy_moesif_implementation \
 														 snoopy_moesif_verification_source
 	$(MODELSIM_VERIFICATION_COMMAND)
 
+SNOOPY_INVALIDATE_CACHE_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_SOURCE_DIRECTORY)/cache
+SNOOPY_INVALIDATE_CACHE_IMPLEMENTATION_SOURCE = $(SNOOPY_INVALIDATE_CACHE_SOURCE_DIRECTORY)/implementation/*.sv
+
+snoopy_invalidate_cache_implementation_source : $(SNOOPY_INVALIDATE_CACHE_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_invalidate_cache_implementation : memory_implementation_source \
+																				 snoopy_invalidate_protocol_implementation \
+																				 snoopy_invalidate_commands_implementation_source \
+																				 arbiter_implementation_source \
+																				 snoopy_invalidate_set_associative_cache_implementation \
+																				 snoopy_invalidate_concurrency_lock_implementation \
+																				 snoopy_invalidate_cpu_controller_implementation \
+																				 snoopy_invalidate_snoopy_controller_implementation \
+																				 snoopy_invalidate_cache_implementation_source
 .PHONY : clean
 
 clean : 
 	vdel -lib $(LIBRARY) -all
 	vlib $(LIBRARY)
 	vmap work $(LIBRARY)
+
+MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/moesifCacheSystem
+MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testInterface.sv \
+																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testBench.sv
+
+moesif_cache_system_implementation_source : $(MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+moesif_cache_system_implementation : memory_implementation_source \
+																		 snoopy_moesif_implementation \
+																		 snoopy_invalidate_commands_implementation_source \
+																		 arbiter_implementation_source \
+																		 snoopy_invalidate_protocol_implementation \
+																		 snoopy_invalidate_cache_implementation \
+																		 simple_arbiter_implementation \
+																		 snoopy_invalidate_bus_implementation \
+																		 ram_implementation \
+																		 moesif_cache_system_implementation_source
+
+	vsim -c bachelorThesis.TestBench -do "exit"

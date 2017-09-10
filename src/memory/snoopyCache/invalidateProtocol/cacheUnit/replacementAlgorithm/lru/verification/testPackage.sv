@@ -4,10 +4,11 @@ package testPackage;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;
 	
-	localparam INDEX_WIDTH         = 6;
-	localparam SET_ASSOCIATIVITY   = 2;
-	localparam SEQUENCE_ITEM_COUNT = 1000;
-	localparam TEST_INTERFACE      = "TestInterface";
+	localparam INDEX_WIDTH           = 6;
+	localparam SET_ASSOCIATIVITY     = 2;
+	localparam NUMBER_OF_CACHE_LINES = 1 << SET_ASSOCIATIVITY;
+	localparam SEQUENCE_ITEM_COUNT   = 1000;
+	localparam TEST_INTERFACE        = "TestInterface";
 
 	typedef enum int {
 		ACCESS,
@@ -74,7 +75,7 @@ package testPackage;
 
 		protected virtual TestInterface#(
 			.INDEX_WIDTH(INDEX_WIDTH), 
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+			.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 		) testInterface;
 
 		function new(string name = "SetAssociativeLRUDriver", uvm_component parent);
@@ -86,7 +87,7 @@ package testPackage;
 
 			if (!uvm_config_db#(virtual TestInterface#(
 																		.INDEX_WIDTH(INDEX_WIDTH), 
-																		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+																		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 																	))::get(this, "", TEST_INTERFACE, testInterface)) begin
 				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
 			end
@@ -165,7 +166,7 @@ package testPackage;
 
 		protected virtual TestInterface#(
 			.INDEX_WIDTH(INDEX_WIDTH), 
-			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+			.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 		) testInterface;
 
 		function new(string name = "SetAssociativeLRUMonitor", uvm_component parent);
@@ -177,7 +178,7 @@ package testPackage;
 
 			if (!uvm_config_db#(virtual TestInterface#(
 					.INDEX_WIDTH(INDEX_WIDTH), 
-					.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY)
+					.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 					))::get(this, "", TEST_INTERFACE, testInterface)) begin
 				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
 			end

@@ -15,7 +15,11 @@ module TestBench();
 
 	always #5 testInterface.clock = ~testInterface.clock;
 
-	SnoopyController snoopyController(
+	SnoopyController#(
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH)
+	)snoopyController(
 		.slaveInterface(testInterface.slaveInterface),
 		.cacheInterface(testInterface.cacheInterface),
 		.protocolInterface(testInterface.protocolInterface),
@@ -27,7 +31,13 @@ module TestBench();
 	);
 
 	SetAssociativeCacheUnit#(
-		.STATE_TYPE(STATE_TYPE)
+		.DATA_WIDTH(DATA_WIDTH),
+		.TAG_WIDTH(TAG_WIDTH),
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)
 	) setAssociativeCacheUnit(
 		.cpuCacheInterface(testInterface.cpuCacheInterface),
 		.snoopyCacheInterface(testInterface.cacheInterface),

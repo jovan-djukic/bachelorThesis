@@ -1,4 +1,10 @@
-module CPUController(
+module CPUController#(
+	int OFFSET_WIDTH         = 4,
+	int TAG_WIDTH            = 8,
+	int INDEX_WIDTH          = 4,
+	type STATE_TYPE          = logic[1 : 0],
+	STATE_TYPE INVALID_STATE = 2'b0
+)(
 	MemoryInterface.slave slaveInterface,
 	MemoryInterface.master masterInterface,
 	CPUCacheInterface.controller cacheInterface,
@@ -11,19 +17,19 @@ module CPUController(
 	import commands::*;
 
 	//variables
-	logic[cacheInterface.OFFSET_WIDTH - 1 : 0] wordCounter;
-	logic[cacheInterface.TAG_WIDTH - 1    : 0] masterTag;
+	logic[OFFSET_WIDTH - 1 : 0] wordCounter;
+	logic[TAG_WIDTH - 1    : 0] masterTag;
 	assign masterTag = protocolInterface.writeBackRequired == 1 ? cacheInterface.tagOut : cacheInterface.tagIn;
 
 	//slave interface assigns
 	assign slaveInterface.dataIn  = cacheInterface.dataOut;
 
 	//cache interface assings
-	assign cacheInterface.tagIn   = slaveInterface.address[(cacheInterface.OFFSET_WIDTH + cacheInterface.INDEX_WIDTH) +: cacheInterface.TAG_WIDTH];
-	assign cacheInterface.index   = slaveInterface.address[cacheInterface.OFFSET_WIDTH +: cacheInterface.INDEX_WIDTH];
-	assign cacheInterface.offset  = cacheInterface.hit == 1 ? slaveInterface.address[cacheInterface.OFFSET_WIDTH - 1 : 0] : wordCounter;
+	assign cacheInterface.tagIn   = slaveInterface.address[(OFFSET_WIDTH + INDEX_WIDTH) +: TAG_WIDTH];
+	assign cacheInterface.index   = slaveInterface.address[OFFSET_WIDTH +: INDEX_WIDTH];
+	assign cacheInterface.offset  = cacheInterface.hit == 1 ? slaveInterface.address[OFFSET_WIDTH - 1 : 0] : wordCounter;
 	assign cacheInterface.dataIn  = cacheInterface.hit == 1 ? slaveInterface.dataOut : masterInterface.dataIn;
-	assign cacheInterface.stateIn = cacheInterface.hit == 0 && protocolInterface.writeBackRequired == 1 ? cacheInterface.INVALID_STATE : protocolInterface.stateIn;
+	assign cacheInterface.stateIn = cacheInterface.hit == 0 && protocolInterface.writeBackRequired == 1 ? INVALID_STATE : protocolInterface.stateIn;
 
 	//arbiter interface assigns
 	assign arbiterInterface.request = commandInterface.commandOut != NONE ? 1 : 0;

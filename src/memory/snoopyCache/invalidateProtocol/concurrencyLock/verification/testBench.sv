@@ -10,6 +10,7 @@ module TestBench();
 	always #5 testInterface.clock = ~testInterface.clock;
 
 	ConcurrencyLock#(
+		.ADDRESS_WIDTH(ADDRESS_WIDTH),
 		.OFFSET_WIDTH(OFFSET_WIDTH)
 	) concurrencyLock(
 		.cpuSlaveMemoryInterface(testInterface.cpuSlaveMemoryInterface),
