@@ -87,10 +87,11 @@ package testPackage;
 			end
 			testInterface.reset = 0;
 
-			wait (testInterface.accessEnable                == 0);
+			wait (testInterface.accessEnable                    == 0);
 			testInterface.invalidateEnable = 0;
-			wait (testInterface.commandInterface.commandOut == NONE);
-			wait (testInterface.arbiterInterface.request    == 0);
+			wait (testInterface.commandInterface.commandOut     == NONE);
+			wait (testInterface.arbiterInterface.request        == 0);
+			wait (testInterface.slaveInterface.functionComplete == 0);
 		endtask : resetDUT
 
 		virtual task drive();
@@ -303,10 +304,11 @@ package testPackage;
 			end
 			//testInterface.reset = 0;
 
-			wait (testInterface.accessEnable                == 0);
+			wait (testInterface.accessEnable                    == 0);
 			//testInterface.invalidateEnable = 0;
-			wait (testInterface.commandInterface.commandOut == NONE);
-			wait (testInterface.arbiterInterface.request    == 0);
+			wait (testInterface.commandInterface.commandOut     == NONE);
+			wait (testInterface.arbiterInterface.request        == 0);
+			wait (testInterface.slaveInterface.functionComplete == 0);
 		endtask : resetDUT
 
 		virtual task collect();

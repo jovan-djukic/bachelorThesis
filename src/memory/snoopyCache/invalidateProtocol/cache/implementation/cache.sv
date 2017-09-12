@@ -103,7 +103,9 @@ module Cache#(
 	SnoopyController#(
 		.OFFSET_WIDTH(OFFSET_WIDTH),
 		.INDEX_WIDTH(INDEX_WIDTH),
-		.TAG_WIDTH(TAG_WIDTH)
+		.TAG_WIDTH(TAG_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)
 	) snoopyController(
 		.slaveInterface(snoopyMasterReadMemoryInterface),
 		.cacheInterface(snoopyCacheInterface),

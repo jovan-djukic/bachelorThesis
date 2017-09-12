@@ -364,10 +364,11 @@ clean :
 
 MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/moesifCacheSystem
 MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testInterface.sv \
+																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testPackage.sv \
 																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testBench.sv
 
 moesif_cache_system_implementation_source : $(MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE)
-	$(VLOG) $?
+	$(UVM_COMMAND) $?
 
 moesif_cache_system_implementation : memory_implementation_source \
 																		 snoopy_moesif_implementation \
@@ -380,4 +381,4 @@ moesif_cache_system_implementation : memory_implementation_source \
 																		 ram_implementation \
 																		 moesif_cache_system_implementation_source
 
-	vsim -c bachelorThesis.TestBench -do "exit"
+	$(MODELSIM_VERIFICATION_COMMAND)

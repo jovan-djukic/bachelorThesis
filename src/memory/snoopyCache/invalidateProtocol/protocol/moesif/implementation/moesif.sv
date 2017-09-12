@@ -8,7 +8,9 @@ module MOESIF(
 
 	//cpu controller
 	assign cpuProtocolInterface.writeBackRequired     = cpuProtocolInterface.stateOut == MODIFIED || cpuProtocolInterface.stateOut == OWNED ? 1 : 0;
-	assign cpuProtocolInterface.invalidateRequired    = cpuProtocolInterface.stateOut != MODIFIED && cpuProtocolInterface.stateOut != EXCLUSIVE ? 1 : 0;
+	assign cpuProtocolInterface.invalidateRequired    = cpuProtocolInterface.stateOut != MODIFIED && 
+																											cpuProtocolInterface.stateOut != EXCLUSIVE &&
+																											cpuProtocolInterface.write == 1  ? 1 : 0;
 	assign cpuProtocolInterface.readExclusiveRequired = cpuProtocolInterface.stateOut == INVALID && cpuProtocolInterface.write == 1 ? 1 : 0;
 
 	always_comb begin

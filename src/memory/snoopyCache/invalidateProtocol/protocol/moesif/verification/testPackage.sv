@@ -22,7 +22,7 @@ package testPackage;
 																									BUS_INVALIDATE,
 																									BUS_READ_EXCLUSIVE
 																							};
-	localparam SEQUENCE_ITEM_COUNT = 10;
+	localparam SEQUENCE_ITEM_COUNT = 1000;
 	localparam TEST_INTERFACE      = "TestInterface";
 
 
@@ -190,8 +190,8 @@ package testPackage;
 				errorCounter++;
 			end
 
-			if (collectedItem.invalidateRequired != classImplementation.invalidateRequired(.state(collectedItem.cpuStateOut))) begin
-				int expected = classImplementation.invalidateRequired(.state(collectedItem.cpuStateOut));
+			if (collectedItem.invalidateRequired != classImplementation.invalidateRequired(.state(collectedItem.cpuStateOut), .write(collectedItem.cpuWrite))) begin
+				int expected = classImplementation.invalidateRequired(.state(collectedItem.cpuStateOut), .write(collectedItem.cpuWrite));
 				int received = collectedItem.invalidateRequired;
 				`uvm_error("INVALIDATE_REQUIRED_MISMATCH", $sformatf("EXPECTED=%d, RECEIVED=%d", expected, received))
 				errorCounter++;

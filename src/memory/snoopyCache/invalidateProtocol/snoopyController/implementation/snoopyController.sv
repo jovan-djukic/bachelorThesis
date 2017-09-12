@@ -1,7 +1,9 @@
 module SnoopyController#(
-	int OFFSET_WIDTH = 4,
-	int INDEX_WIDTH  = 4,
-	int TAG_WIDTH    = 8
+	int OFFSET_WIDTH         = 4,
+	int INDEX_WIDTH          = 4,
+	int TAG_WIDTH            = 8,
+	type STATE_TYPE          = logic[1 : 0],
+	STATE_TYPE INVALID_STATE = 2'b0
 )(
 	ReadMemoryInterface.slave slaveInterface,
 	SnoopyCacheInterface.controller cacheInterface,
@@ -20,7 +22,7 @@ module SnoopyController#(
 
 	assign slaveInterface.dataIn = cacheInterface.dataOut;
 		
-	assign protocolInterface.stateOut  = cacheInterface.stateOut;
+	assign protocolInterface.stateOut  = cacheInterface.hit == 1 ? cacheInterface.stateOut : INVALID_STATE;
 	assign protocolInterface.commandIn = commandInterface.commandIn;
 
 	assign commandInterface.isInvalidated = cacheInterface.hit == 0 ? 1 : 0;

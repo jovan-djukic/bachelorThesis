@@ -13,5 +13,6 @@ interface TestInterface#(
 		end
 	endgenerate
 
+	logic reset;
 	bit clock;
 endinterface : TestInterface

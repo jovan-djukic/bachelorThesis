@@ -19,11 +19,17 @@ module ConcurrencyLock#(
 	import commands::*;
 	
 	//lock logic
-	logic conflict;
+	logic busInvalidateLoop, conflict;
 	
 	always_comb begin
+		busInvalidateLoop = 0;
 		conflict = 0;
 		if (cpuSlaveMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] == snoopySlaveReadMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] &&
+				((cpuControllerCommandInterface.commandOut == BUS_INVALIDATE && snoopyControllerCommandInterface.commandIn == BUS_INVALIDATE) || 
+				 (cpuControllerCommandInterface.commandOut == BUS_READ_EXCLUSIVE && snoopyControllerCommandInterface.commandIn == BUS_READ_EXCLUSIVE)) && 
+				cpuDeviceArbiterInterface.grant == 1) begin
+			busInvalidateLoop = 1;
+		end else if (cpuSlaveMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] == snoopySlaveReadMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] &&
 				cpuHit == 1 && snoopyHit == 1 && (
 					(cpuSlaveMemoryInterface.readEnabled == 1 && snoopyControllerCommandInterface.commandIn == BUS_INVALIDATE) ||
 					(cpuSlaveMemoryInterface.readEnabled == 1 && snoopyControllerCommandInterface.commandIn == BUS_READ_EXCLUSIVE) ||
@@ -34,25 +40,11 @@ module ConcurrencyLock#(
 			conflict = 1;
 		end	
 	end
-
+	
 	logic cpuHold, snoopyHold;
 
 	assign cpuHold    = conflict == 1 && cpuMasterMemoryInterface.functionComplete == 0 ? 1 : 0;
 	assign snoopyHold = conflict == 1 && cpuMasterMemoryInterface.functionComplete == 1 ? 1 : 0;
-
-	logic busInvalidateLoop;
-	
-	always_comb begin
-		busInvalidateLoop = 0;
-		if (cpuSlaveMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] == snoopySlaveReadMemoryInterface.address[ADDRESS_WIDTH - 1 : OFFSET_WIDTH] &&
-				cpuHit == 1 && 
-				snoopyHit == 1 && 
-				((cpuControllerCommandInterface.commandOut == BUS_INVALIDATE && snoopyControllerCommandInterface.commandIn == BUS_INVALIDATE) || 
-				 (cpuControllerCommandInterface.commandOut == BUS_READ_EXCLUSIVE && snoopyControllerCommandInterface.commandIn == BUS_READ_EXCLUSIVE)) && 
-				cpuDeviceArbiterInterface.grant == 1) begin
-			busInvalidateLoop = 1;
-		end	
-	end
 
 	//memory interface assigns
 	assign cpuMasterMemoryInterface.address      = cpuSlaveMemoryInterface.address;
@@ -66,7 +58,7 @@ module ConcurrencyLock#(
 	//cpu command interface assigns
 	assign cpuControllerCommandInterface.commandOut = cpuBusCommandInterface.commandOut;
 
-	assign cpuBusCommandInterface.isInvalidated = cpuBusCommandInterface.isInvalidated;
+	assign cpuBusCommandInterface.isInvalidated = cpuControllerCommandInterface.isInvalidated;
 
 	//cpu arbiter interface
 	assign cpuDeviceArbiterInterface.request = cpuArbiterArbiterInterface.request;

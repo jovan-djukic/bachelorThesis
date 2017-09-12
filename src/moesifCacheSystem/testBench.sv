@@ -1,19 +1,6 @@
 module TestBench();
-	import states::*;
-
-	localparam ADDRESS_WIDTH            = 16;
-	localparam DATA_WIDTH               = 16;
-	localparam TAG_WIDTH                = 8;
-	localparam INDEX_WIDTH              = 4;
-	localparam OFFSET_WIDTH             = 4;
-	localparam SET_ASSOCIATIVITY        = 2;
-	localparam NUMBER_OF_CACHES         = 1;
-	localparam type STATE_TYPE          = CacheLineState;
-	localparam STATE_TYPE INVALID_STATE = INVALID;
-
-	localparam NUMBER_OF_BLOCKS = 64;
-	localparam SIZE_IN_WORDS    = (1 << OFFSET_WIDTH) * NUMBER_OF_BLOCKS;
-	
+	import uvm_pkg::*;
+	import testPackage::*;
 	genvar i;
 
 	TestInterface#(
@@ -87,7 +74,9 @@ module TestBench();
 	Arbiter#(
 		.NUMBER_OF_DEVICES(NUMBER_OF_CACHES)
 	) arbiter(
-		.arbiterInterfaces(cpuArbiterInterface)
+		.arbiterInterfaces(cpuArbiterInterface),
+		.clock(testInterface.clock),
+		.reset(testInterface.reset)
 	);
 
 	logic[NUMBER_OF_CACHES - 1 : 0] cpuGrants, snoopyGrants;
@@ -136,4 +125,14 @@ module TestBench();
 		.memoryInterface(busRamMemoryInterface),
 		.clock(testInterface.clock)
 	);
+
+	initial begin
+		uvm_config_db#(virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_CACHES(NUMBER_OF_CACHES)
+		))::set(uvm_root::get(), "*", TEST_INTERFACE, testInterface);
+
+		run_test("MemoryTest");
+	end
 endmodule : TestBench

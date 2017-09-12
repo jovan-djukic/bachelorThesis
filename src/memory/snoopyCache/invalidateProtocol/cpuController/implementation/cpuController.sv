@@ -217,12 +217,13 @@ module CPUController#(
 
 	//reset task
 	task cpuControllerReset();
-			readBlockState          <= READ_BLOCK_BUS_GRANT_WAIT;
-			wordCounter             <= 0;
-			invalidateBlockState    <= INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
-			writeBackBlockState     <= WRITE_BACK_BLOCK_BUS_GRANT_WAIT;
-			readExclusiveBlockState <= READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT;
-			accessEnable            <= 0;
+			readBlockState                  <= READ_BLOCK_BUS_GRANT_WAIT;
+			wordCounter                     <= 0;
+			invalidateBlockState            <= INVALIDATE_BLOCK_WAITING_FOR_INVALIDATE_ACKNOWLEDGEMENTS;
+			writeBackBlockState             <= WRITE_BACK_BLOCK_BUS_GRANT_WAIT;
+			readExclusiveBlockState         <= READ_EXLUSIVE_BLOCK_BUS_GRANT_WAIT;
+			accessEnable                    <= 0;
+			slaveInterface.functionComplete <= 0;
 	endtask : cpuControllerReset
 
 	logic requestPresent;

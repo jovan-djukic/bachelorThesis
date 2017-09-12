@@ -18,7 +18,9 @@ module TestBench();
 	SnoopyController#(
 		.TAG_WIDTH(TAG_WIDTH),
 		.INDEX_WIDTH(INDEX_WIDTH),
-		.OFFSET_WIDTH(OFFSET_WIDTH)
+		.OFFSET_WIDTH(OFFSET_WIDTH),
+		.STATE_TYPE(STATE_TYPE),
+		.INVALID_STATE(INVALID_STATE)
 	)snoopyController(
 		.slaveInterface(testInterface.slaveInterface),
 		.cacheInterface(testInterface.cacheInterface),

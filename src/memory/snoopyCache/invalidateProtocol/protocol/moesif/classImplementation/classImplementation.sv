@@ -7,8 +7,8 @@ package classImplementation;
 			return state == MODIFIED || state == OWNED ? 1 : 0;
 		endfunction : writeBackRequired
 
-		function int invalidateRequired(CacheLineState state);
-			return state != MODIFIED && state != EXCLUSIVE ? 1 : 0;
+		function int invalidateRequired(CacheLineState state, int write);
+			return state != MODIFIED && state != EXCLUSIVE && write == 1 ? 1 : 0;
 		endfunction : invalidateRequired
 
 		function int readExclusiveRequired(CacheLineState state, int write);

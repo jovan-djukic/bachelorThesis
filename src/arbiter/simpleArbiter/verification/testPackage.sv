@@ -8,10 +8,10 @@ package testPackage;
 	localparam TEST_INTERFACE      = "TestInterface";
 
 	class ArbiterSequenceItem extends BasicSequenceItem;
-		bit[NUMBER_OF_DEVICES - 1 : 0] requests;
+		int deviceNumber;
 
 		`uvm_object_utils_begin(ArbiterSequenceItem)
-			`uvm_field_int(requests, UVM_ALL_ON)
+			`uvm_field_int(deviceNumber, UVM_ALL_ON)
 		`uvm_object_utils_end
 
 		function new(string name = "ArbiterSequenceItem");
@@ -19,7 +19,7 @@ package testPackage;
 		endfunction : new
 
 		virtual function void myRandomize();
-			requests = $urandom();
+			deviceNumber = $urandom_range(NUMBER_OF_DEVICES - 1, 0);
 		endfunction : myRandomize
 	endclass : ArbiterSequenceItem
 
@@ -45,17 +45,20 @@ package testPackage;
 		endfunction : build_phase
 		
 		virtual task resetDUT();
-			@(posedge testInterface.clock);
+			testInterface.reset = 1;
+			repeat (2) begin
+				@(posedge testInterface.clock);
+			end
+			testInterface.reset = 0;
 		endtask : resetDUT
 
 		virtual task drive();
 			$cast(sequenceItem, req);
 
-			//for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
-			//	testInterface.arbiterInterfaces[i].request = sequenceItem.requests[i];
-			//end
-			testInterface.requests = sequenceItem.requests;
+			testInterface.requests[sequenceItem.deviceNumber] = ~testInterface.requests[sequenceItem.deviceNumber];
 
+			@(posedge testInterface.clock);
+			@(posedge testInterface.clock);
 			@(posedge testInterface.clock);
 			@(posedge testInterface.clock);
 		endtask : drive;
@@ -95,13 +98,19 @@ package testPackage;
 		endfunction : build_phase	
 
 		virtual task resetDUT();
-			@(posedge testInterface.clock);
+			testInterface.reset = 1;
+			repeat (2) begin
+				@(posedge testInterface.clock);
+			end
+			testInterface.reset = 0;
 		endtask : resetDUT
 			
 		virtual task collect();
 			ArbiterCollectedItem collectedItem;
 			$cast(collectedItem, super.basicCollectedItem);
 
+			@(posedge testInterface.clock);
+			@(posedge testInterface.clock);
 			@(posedge testInterface.clock);
 
 			//for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
@@ -122,26 +131,37 @@ package testPackage;
 
 		ArbiterCollectedItem collectedItem;
 
+		bit[NUMBER_OF_DEVICES - 1 : 0] requests, grants;
+		int currentDevice;
+
 		function new(string name = "ArbiterScoreboard", uvm_component parent);
 			super.new(name, parent);
+
+			requests = 0;
+			grants   = 0;
 		endfunction : new
 
 		virtual function void checkBehaviour();
 			int errorCounter = 0;
-			int grants = 0;
 			$cast(collectedItem, super.collectedItem);
 
-			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
-				if (collectedItem.requests[i] == 1) begin
-					if (collectedItem.grants[i] == 1) begin
-						if (grants == 0) begin
-							grants++;
-						end else begin
-							`uvm_error("ARBITER_ERROR", "")
-							errorCounter++;
-						end
-					end
+			requests = collectedItem.requests;
+			if ((| grants) == 1 && requests[currentDevice] == 0) begin
+				grants[currentDevice] = 0;
+			end
+
+			if ((| grants) == 0) begin
+				for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+					if (requests[i] == 1) begin
+						grants[i]     = 1;
+						currentDevice = i;
+					end	
 				end
+			end 
+
+			if (collectedItem.grants != grants) begin
+				`uvm_error("ARBITER_ERROR", "")
+				errorCounter++;
 			end
 
 			if (errorCounter == 0) begin

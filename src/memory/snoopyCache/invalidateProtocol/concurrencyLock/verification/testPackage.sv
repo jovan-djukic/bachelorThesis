@@ -297,7 +297,15 @@ package testPackage;
 
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
 
+					testInterface.cpuControllerCommandInterface.isInvalidated = 1;
+
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 1);
+
 					@(posedge testInterface.clock);
+					
+					testInterface.cpuControllerCommandInterface.isInvalidated = 0;
+
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 0);
 	
 					testInterface.cpuMasterMemoryInterface.functionComplete = 1;
 
@@ -396,7 +404,15 @@ package testPackage;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 
+					testInterface.cpuControllerCommandInterface.isInvalidated = 1;
+					
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 1);
+
 					@(posedge testInterface.clock);
+					
+					testInterface.cpuControllerCommandInterface.isInvalidated = 0;
+					
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 0);
 
 					testInterface.cpuMasterMemoryInterface.functionComplete = 1;
 
@@ -890,8 +906,16 @@ package testPackage;
 					//testInterface.cpuSlaveMemoryInterface.dataOut = sequenceItem.data;
 
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
+					
+					//testInterface.cpuControllerCommandInterface.isInvalidated = 1;
+
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 1);
 
 					@(posedge testInterface.clock);
+					
+					//testInterface.cpuControllerCommandInterface.isInvalidated = 0;
+
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 0);
 	
 					//testInterface.cpuMasterMemoryInterface.functionComplete = 1;
 
@@ -921,7 +945,15 @@ package testPackage;
 
 					wait (testInterface.snoopyMasterReadMemoryInterface.readEnabled == 1);
 
+					//testInterface.cpuControllerCommandInterface.isInvalidated = 1;
+					
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 1);
+
 					@(posedge testInterface.clock);
+					
+					//testInterface.cpuControllerCommandInterface.isInvalidated = 0;
+					
+					wait (testInterface.cpuBusCommandInterface.isInvalidated == 0);
 
 					//testInterface.snoopyMasterReadMemoryInterface.functionComplete = 1;
 
