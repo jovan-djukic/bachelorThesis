@@ -1,6 +1,6 @@
 interface ReadMemoryInterface#(
-	int ADDRESS_WIDTH = 32,
-	int DATA_WIDTH    = 32
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH
 )();
 
 	logic[ADDRESS_WIDTH - 1 : 0] address;

@@ -5,12 +5,12 @@ package testPackage;
 	import commands::*;
 	import states::*;
 
-	localparam ADDRESS_WIDTH            = 32;
-	localparam DATA_WIDTH               = 32;
-	localparam TAG_WIDTH                = 16;
-	localparam INDEX_WIDTH              = 8;
-	localparam OFFSET_WIDTH             = 8;
-	localparam SET_ASSOCIATIVITY        = 4;
+	localparam ADDRESS_WIDTH            = 16;
+	localparam DATA_WIDTH               = 16;
+	localparam TAG_WIDTH                = 8;
+	localparam INDEX_WIDTH              = 4;
+	localparam OFFSET_WIDTH             = 4;
+	localparam SET_ASSOCIATIVITY        = 2;
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
 	localparam SEQUENCE_ITEM_COUNT      = 1000;
@@ -106,6 +106,8 @@ package testPackage;
 			@(posedge testInterface.clock);
 
 			if (testInterface.cacheInterface.hit == 0) begin
+				wait (testInterface.protocolInterface.stateOut       == INVALID_STATE);
+				wait (testInterface.protocolInterface.writeBackState == testInterface.cacheInterface.stateOut);
 				if (testInterface.protocolInterface.writeBackRequired == 1) begin
 					wait (testInterface.commandInterface.commandOut == BUS_WRITEBACK);
 					wait (testInterface.arbiterInterface.request    == 1);
@@ -331,6 +333,8 @@ package testPackage;
 			if (testInterface.cacheInterface.hit == 0) begin
 				collectedItem.writeBackRequired = testInterface.protocolInterface.writeBackRequired;
 
+				wait (testInterface.protocolInterface.stateOut       == INVALID_STATE);
+				wait (testInterface.protocolInterface.writeBackState == testInterface.cacheInterface.stateOut);
 				if (testInterface.protocolInterface.writeBackRequired == 1) begin
 					wait (testInterface.commandInterface.commandOut == BUS_WRITEBACK);
 					wait (testInterface.arbiterInterface.request    == 1);

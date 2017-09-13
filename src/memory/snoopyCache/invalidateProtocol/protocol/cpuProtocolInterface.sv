@@ -1,19 +1,19 @@
 interface CPUProtocolInterface#(
-	type STATE_TYPE = logic[1 : 0]
+	type STATE_TYPE
 )();
 	import commands::*;
 
 	logic read, write;
 	logic writeBackRequired, invalidateRequired, readExclusiveRequired;
-	STATE_TYPE stateIn, stateOut;
+	STATE_TYPE stateIn, stateOut, writeBackState;
 
 	modport controller(
 		input stateIn, writeBackRequired, invalidateRequired, readExclusiveRequired,
-		output stateOut, read, write
+		output stateOut, writeBackState, read, write
 	);
 
 	modport protocol (
-		input stateOut, read, write,
+		input stateOut, writeBackState, read, write,
 		output stateIn, writeBackRequired, invalidateRequired, readExclusiveRequired
 	);
 endinterface : CPUProtocolInterface

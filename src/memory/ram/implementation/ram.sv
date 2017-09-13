@@ -1,6 +1,6 @@
 module RAM#(
-	int DATA_WIDTH    = 16,
-	int SIZE_IN_WORDS = 1024,
+	int DATA_WIDTH,
+	int SIZE_IN_WORDS,
 	int DELAY         = 4,
 	int COUNTER_WIDTH = $clog2(DELAY),
 	string	INIT_FILE = ""

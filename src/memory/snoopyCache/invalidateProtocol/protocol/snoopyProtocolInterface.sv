@@ -1,5 +1,5 @@
 interface SnoopyProtocolInterface#(
-	type STATE_TYPE = logic[1 : 0]
+	type STATE_TYPE
 )();
 	import commands::*;
 

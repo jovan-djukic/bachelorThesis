@@ -1,6 +1,10 @@
 module TestBench();
 	import uvm_pkg::*;
+	`include "uvm_macros.svh"
 	import testPackage::*;
+
+	import commands::*;
+
 	genvar i;
 
 	TestInterface#(
@@ -89,17 +93,20 @@ module TestBench();
 	endgenerate
 
 	//moesif protocol bus
-	logic sharedIn;
-	logic[NUMBER_OF_CACHES - 1 : 0] sharedOuts;
+	logic sharedIn, ownedIn;
+	logic[NUMBER_OF_CACHES - 1 : 0] sharedOuts, ownedOuts;
 	generate
 		for (i = 0; i < NUMBER_OF_CACHES; i++) begin
 			assign sharedOuts[i] = moesifInterface[i].sharedOut;
+			assign ownedOuts[i]  = moesifInterface[i].ownedOut;
 		end
 	endgenerate
 	assign sharedIn = (| sharedOuts) == 1 ? 1 : 0;
+	assign ownedIn  = (| ownedOuts) == 1 ? 1 : 0;
 	generate
 		for (i = 0; i < NUMBER_OF_CACHES; i++) begin
 			assign moesifInterface[i].sharedIn = sharedIn;
+			assign moesifInterface[i].ownedIn  = ownedIn;
 		end
 	endgenerate
 
@@ -120,6 +127,7 @@ module TestBench();
 
 	//ram memory
 	RAM#(
+		.DATA_WIDTH(DATA_WIDTH),
 		.SIZE_IN_WORDS(SIZE_IN_WORDS)
 	) ram(
 		.memoryInterface(busRamMemoryInterface),

@@ -1,8 +1,8 @@
 package setAssociativeLRUClassImplementationPackage;
 	//class representing lru algorithm, used for verification
 	class SetAssociativeLRUClassImplementation#(
-		int INDEX_WIDTH       = 4,
-		int SET_ASSOCIATIVITY = 2
+		int INDEX_WIDTH,
+		int SET_ASSOCIATIVITY
 	);
 		
 		localparam NUMBER_OF_LRUS        = 1 << INDEX_WIDTH;

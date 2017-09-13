@@ -1,5 +1,5 @@
 module LRU#(
-	int NUMBER_OF_CACHE_LINES = 4,
+	int NUMBER_OF_CACHE_LINES,
 	int COUNTER_WIDTH         = $clog2(NUMBER_OF_CACHE_LINES)
 )(
   ReplacementAlgorithmInterface.slave replacementAlgorithmInterface,
@@ -15,23 +15,18 @@ module LRU#(
             counters[i] <= i;
           end    
       end else begin
-				if (!(replacementAlgorithmInterface.accessEnable == 1 && replacementAlgorithmInterface.invalidateEnable == 1 && 
-					replacementAlgorithmInterface.lastAccessedCacheLine == replacementAlgorithmInterface.invalidatedCacheLine)) begin
-
 					for (int i = 0; i < NUMBER_OF_CACHE_LINES; i++) begin
 						if (replacementAlgorithmInterface.accessEnable == 1 && replacementAlgorithmInterface.invalidateEnable == 1) begin
-							if (i != replacementAlgorithmInterface.lastAccessedCacheLine && i != replacementAlgorithmInterface.invalidatedCacheLine) begin
-								if (counters[i] < counters[replacementAlgorithmInterface.invalidatedCacheLine] && 
-									counters[i] < counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
-									
-									counters[i] <= counters[i] + 1;
+							if (counters[i] < counters[replacementAlgorithmInterface.invalidatedCacheLine] && 
+								counters[i] < counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
+								
+								counters[i] <= counters[i] + 1;
 
-								end else if (counters[i] > counters[replacementAlgorithmInterface.invalidatedCacheLine] &&
-														 counters[i] > counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
-									
-									counters[i] <= counters[i] - 1;
+							end else if (counters[i] > counters[replacementAlgorithmInterface.invalidatedCacheLine] &&
+													 counters[i] > counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
+								
+								counters[i] <= counters[i] - 1;
 
-								end
 							end
 						end else if (replacementAlgorithmInterface.accessEnable == 1) begin
 							if (counters[i] < counters[replacementAlgorithmInterface.lastAccessedCacheLine]) begin
@@ -43,7 +38,6 @@ module LRU#(
 							end
 						end
 					end
-				end
 
 				if (replacementAlgorithmInterface.accessEnable == 1) begin
 					counters[replacementAlgorithmInterface.lastAccessedCacheLine] <= 0;

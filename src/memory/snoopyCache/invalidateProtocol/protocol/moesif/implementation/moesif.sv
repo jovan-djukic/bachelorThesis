@@ -7,7 +7,7 @@ module MOESIF(
 	import commands::*;
 
 	//cpu controller
-	assign cpuProtocolInterface.writeBackRequired     = cpuProtocolInterface.stateOut == MODIFIED || cpuProtocolInterface.stateOut == OWNED ? 1 : 0;
+	assign cpuProtocolInterface.writeBackRequired     = cpuProtocolInterface.writeBackState == MODIFIED || cpuProtocolInterface.writeBackState == OWNED ? 1 : 0;
 	assign cpuProtocolInterface.invalidateRequired    = cpuProtocolInterface.stateOut != MODIFIED && 
 																											cpuProtocolInterface.stateOut != EXCLUSIVE &&
 																											cpuProtocolInterface.write == 1  ? 1 : 0;
@@ -46,7 +46,9 @@ module MOESIF(
 
 			INVALID: begin
 				if (cpuProtocolInterface.read == 1) begin
-					if (moesifInterface.sharedIn == 1) begin
+					if (moesifInterface.ownedIn == 1) begin
+						cpuProtocolInterface.stateIn = SHARED;
+					end else if (moesifInterface.sharedIn == 1) begin
 						cpuProtocolInterface.stateIn = FORWARD;
 					end else begin
 						cpuProtocolInterface.stateIn = EXCLUSIVE;
@@ -69,9 +71,11 @@ module MOESIF(
 	//snoopy protocol
 	assign snoopyProtocolInterface.request = snoopyProtocolInterface.stateOut == MODIFIED ||
 																					 snoopyProtocolInterface.stateOut == EXCLUSIVE ||
-																					 snoopyProtocolInterface.stateOut == FORWARD ? 1 : 0;		
+																					 snoopyProtocolInterface.stateOut == FORWARD  ||
+																					 snoopyProtocolInterface.stateOut == OWNED? 1 : 0;		
 	
 	assign moesifInterface.sharedOut = snoopyProtocolInterface.stateOut != INVALID ? 1 : 0;
+	assign moesifInterface.ownedOut = snoopyProtocolInterface.stateOut == OWNED ? 1 : 0;
 
 	always_comb begin
 		snoopyProtocolInterface.stateIn = INVALID;

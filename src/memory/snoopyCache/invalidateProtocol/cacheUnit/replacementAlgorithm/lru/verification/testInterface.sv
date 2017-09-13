@@ -1,6 +1,6 @@
 interface TestInterface#(
-	int INDEX_WIDTH           = 6,
-	int NUMBER_OF_CACHE_LINES = 4
+	int INDEX_WIDTH,
+	int NUMBER_OF_CACHE_LINES
 )();
 
 	ReplacementAlgorithmInterface#(

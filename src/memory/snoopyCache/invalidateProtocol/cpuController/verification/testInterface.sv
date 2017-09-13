@@ -1,12 +1,12 @@
 interface TestInterface#(
-	int ADDRESS_WIDTH        = 32,
-	int DATA_WIDTH           = 32,
-	int TAG_WIDTH            = 16,
-	int INDEX_WIDTH          = 8,
-	int OFFSET_WIDTH         = 8,
-	int SET_ASSOCIATIVITY    = 4,
-	type STATE_TYPE          = logic [1 : 0],
-	STATE_TYPE INVALID_STATE = 0
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH,
+	int TAG_WIDTH,
+	int INDEX_WIDTH,
+	int OFFSET_WIDTH,
+	int SET_ASSOCIATIVITY,
+	type STATE_TYPE,
+	STATE_TYPE INVALID_STATE
 )();
 	MemoryInterface#(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),

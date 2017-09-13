@@ -1,7 +1,7 @@
 module SnoopyBus#(
-	int ADDRESS_WIDTH    = 32,
-	int DATA_WIDTH       = 32,
-	int NUMBER_OF_CACHES = 4
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH,
+	int NUMBER_OF_CACHES
 )(
 	MemoryInterface.slave cpuSlaveMemoryInterface[NUMBER_OF_CACHES],
 	CPUCommandInterface.bus cpuBusCommandInterface[NUMBER_OF_CACHES],

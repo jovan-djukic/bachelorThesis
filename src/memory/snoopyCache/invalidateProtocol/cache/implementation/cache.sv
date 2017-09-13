@@ -1,12 +1,12 @@
 module Cache#(
-	int ADDRESS_WIDTH        = 16,
-	int DATA_WIDTH           = 16,
-	int TAG_WIDTH            = 6,
-	int INDEX_WIDTH          = 6,
-	int OFFSET_WIDTH         = 4,
-	int SET_ASSOCIATIVITY    = 2,
-	type STATE_TYPE          = logic[1 : 0],
-	STATE_TYPE INVALID_STATE = 2'b0
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH,
+	int TAG_WIDTH,
+	int INDEX_WIDTH,
+	int OFFSET_WIDTH ,
+	int SET_ASSOCIATIVITY,
+	type STATE_TYPE,
+	STATE_TYPE INVALID_STATE
 )(
 	MemoryInterface.slave cpuSlaveInterface,
 	MemoryInterface.master cpuMasterInterface,
@@ -68,7 +68,7 @@ module Cache#(
 
 	CPUCommandInterface cpuBusCommandInterface();
 
-	ArbiterInterface cpuArbiterArbiterInterface();
+	ArbiterInterface cpuArbiterArbiterInterface(), snoopyArbiterArbiterInterface();
 
 	SnoopyCommandInterface snoopyBusCommandInterface();
 
@@ -77,9 +77,11 @@ module Cache#(
 		.DATA_WIDTH(DATA_WIDTH)
 	) snoopyMasterReadMemoryInterface();	
 
-	logic cpuHit, snoopyHit;
-	assign cpuHit    = cpuCacheInterface.hit;
-	assign snoopyHit = snoopyCacheInterface.hit;
+	logic cpuHit, snoopyHit, invalidateRequired;
+
+	assign cpuHit             = cpuCacheInterface.hit;
+	assign snoopyHit          = snoopyCacheInterface.hit;
+	assign invalidateRequired = cpuProtocolInterface.invalidateRequired;
 
 	ConcurrencyLock#(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
@@ -93,10 +95,15 @@ module Cache#(
 		.cpuDeviceArbiterInterface(cpuArbiterInterface),
 		.snoopyBusCommandInterface(snoopyBusCommandInterface),
 		.snoopyControllerCommandInterface(snoopyCommandInterface),
+		.snoopyArbiterArbiterInterface(snoopyArbiterArbiterInterface),
+		.snoopyDeviceArbiterInterface(snoopyArbiterInterface),
 		.snoopyMasterReadMemoryInterface(snoopyMasterReadMemoryInterface),
 		.snoopySlaveReadMemoryInterface(snoopySlaveInterface),
 		.cpuHit(cpuHit),
-		.snoopyHit(snoopyHit)
+		.snoopyHit(snoopyHit),
+		.invalidateRequired(invalidateRequired),
+		.clock(clock),
+		.reset(reset)
 	);
 
 	//controllers
@@ -111,7 +118,7 @@ module Cache#(
 		.cacheInterface(snoopyCacheInterface),
 		.protocolInterface(snoopyProtocolInterface),
 		.commandInterface(snoopyBusCommandInterface),
-		.arbiterInterface(snoopyArbiterInterface),
+		.arbiterInterface(snoopyArbiterArbiterInterface),
 		.invalidateEnable(invalidateEnable),
 		.clock(clock),
 		.reset(reset)

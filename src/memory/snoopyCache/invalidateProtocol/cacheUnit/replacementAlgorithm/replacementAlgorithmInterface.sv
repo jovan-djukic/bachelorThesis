@@ -1,5 +1,5 @@
 interface ReplacementAlgorithmInterface #(
-	parameter NUMBER_OF_CACHE_LINES = 4,
+	parameter NUMBER_OF_CACHE_LINES,
 	parameter COUNTER_WIDTH         = NUMBER_OF_CACHE_LINES <= 2   ? 1 :
 																		NUMBER_OF_CACHE_LINES <= 4   ? 2 :
 																		NUMBER_OF_CACHE_LINES <= 8   ? 3 : 

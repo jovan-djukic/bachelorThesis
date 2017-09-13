@@ -6,7 +6,7 @@ module WriteThroughInvalidate(
 	import commands::*;
 	
 	//cpu protocol table
-	assign cpuProtocolInterface.writeBackRequired     = cpuProtocolInterface.stateOut == DIRTY ? 1 : 0;
+	assign cpuProtocolInterface.writeBackRequired     = cpuProtocolInterface.writeBackState == DIRTY ? 1 : 0;
 	assign cpuProtocolInterface.invalidateRequired    = cpuProtocolInterface.stateOut == VALID && cpuProtocolInterface.write == 1 ? 1 : 0;
 	assign cpuProtocolInterface.readExclusiveRequired = cpuProtocolInterface.stateOut == INVALID && cpuProtocolInterface.write == 1 ? 1 : 0;
 	

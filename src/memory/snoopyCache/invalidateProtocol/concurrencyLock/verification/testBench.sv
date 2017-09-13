@@ -21,10 +21,15 @@ module TestBench();
 		.cpuDeviceArbiterInterface(testInterface.cpuDeviceArbiterInterface),
 		.snoopyBusCommandInterface(testInterface.snoopyBusCommandInterface),
 		.snoopyControllerCommandInterface(testInterface.snoopyControllerCommandInterface),
+		.snoopyArbiterArbiterInterface(testInterface.snoopyArbiterArbiterInterface),
+		.snoopyDeviceArbiterInterface(testInterface.snoopyDeviceArbiterInterface),
 		.snoopySlaveReadMemoryInterface(testInterface.snoopySlaveReadMemoryInterface),
 		.snoopyMasterReadMemoryInterface(testInterface.snoopyMasterReadMemoryInterface),
 		.cpuHit(testInterface.cpuHit),
-		.snoopyHit(testInterface.snoopyHit)
+		.snoopyHit(testInterface.snoopyHit),
+		.invalidateRequired(testInterface.invalidateRequired),
+		.clock(testInterface.clock),
+		.reset(testInterface.reset)
 	);
 
 	initial begin

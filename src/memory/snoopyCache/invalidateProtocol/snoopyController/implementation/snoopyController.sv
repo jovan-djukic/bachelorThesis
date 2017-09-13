@@ -1,9 +1,9 @@
 module SnoopyController#(
-	int OFFSET_WIDTH         = 4,
-	int INDEX_WIDTH          = 4,
-	int TAG_WIDTH            = 8,
-	type STATE_TYPE          = logic[1 : 0],
-	STATE_TYPE INVALID_STATE = 2'b0
+	int OFFSET_WIDTH,
+	int INDEX_WIDTH,
+	int TAG_WIDTH,
+	type STATE_TYPE,
+	STATE_TYPE INVALID_STATE
 )(
 	ReadMemoryInterface.slave slaveInterface,
 	SnoopyCacheInterface.controller cacheInterface,
@@ -27,7 +27,7 @@ module SnoopyController#(
 
 	assign commandInterface.isInvalidated = cacheInterface.hit == 0 ? 1 : 0;
 
-	assign arbiterInterface.request = protocolInterface.request == 1 && (commandInterface.commandIn == BUS_READ || commandInterface.commandIn == BUS_READ_EXCLUSIVE) ? 1 : 0;
+	assign arbiterInterface.request = protocolInterface.request == 1 ? 1 : 0;
 
 	//snoopy controler
 	always_ff @(posedge clock, reset) begin
@@ -37,14 +37,16 @@ module SnoopyController#(
 		case (commandInterface.commandIn) 
 			BUS_READ: begin
 				if (cacheInterface.hit == 1) begin
-					if (cacheInterface.stateOut != protocolInterface.stateIn) begin
-						cacheInterface.writeState <= 1;
-					end					
-
-					if (arbiterInterface.grant == 1) begin
+					if (arbiterInterface.grant == 0) begin
+						if (protocolInterface.stateIn != cacheInterface.stateOut) begin
+							cacheInterface.writeState <= 1;
+						end
+					end else begin
 						if (slaveInterface.readEnabled == 1) begin
 							slaveInterface.functionComplete <= 1;
-						end 
+						end else if (slaveInterface.functionComplete == 1 && slaveInterface.address[OFFSET_WIDTH - 1 : 0] == 0) begin
+							cacheInterface.writeState <= 1;
+						end
 					end
 				end
 			end
@@ -58,15 +60,17 @@ module SnoopyController#(
 
 			BUS_READ_EXCLUSIVE: begin
 				if (cacheInterface.hit == 1) begin
-					if (arbiterInterface.grant == 1) begin
+					if (arbiterInterface.grant == 0) begin
+						cacheInterface.writeState <= 1;
+						invalidateEnable          <= 1;
+					end else begin
 						if (slaveInterface.readEnabled == 1) begin
 							slaveInterface.functionComplete <= 1;
-						end 
+						end else if (slaveInterface.functionComplete == 1 && slaveInterface.address[OFFSET_WIDTH - 1 : 0] == 0) begin
+							cacheInterface.writeState <= 1;
+							invalidateEnable          <= 1;
+						end
 					end
-				end
-				if ((arbiterInterface.grant == 0 || (& slaveInterface.address[OFFSET_WIDTH - 1 : 0]) == 1) && commandInterface.isInvalidated == 0) begin
-					cacheInterface.writeState <= 1;
-					invalidateEnable          <= 1;
 				end
 			end
 		endcase

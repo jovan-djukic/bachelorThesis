@@ -1,11 +1,11 @@
 interface TestInterface#(
-	int TAG_WIDTH            = 6,
-	int INDEX_WIDTH          = 6,
-	int OFFSET_WIDTH         = 4,
-	int SET_ASSOCIATIVITY    = 2,
-	int DATA_WIDTH           = 16,
-	type STATE_TYPE          = logic[1 : 0],
-	STATE_TYPE INVALID_STATE = 2'b0
+	int TAG_WIDTH,
+	int INDEX_WIDTH,
+	int OFFSET_WIDTH,
+	int SET_ASSOCIATIVITY,
+	int DATA_WIDTH,
+	type STATE_TYPE,
+	STATE_TYPE INVALID_STATE
 );
 	
 	CPUCacheInterface#(

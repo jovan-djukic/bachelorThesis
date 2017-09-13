@@ -9,7 +9,7 @@ package testPackage;
 	localparam INDEX_WIDTH              = 2;
 	localparam OFFSET_WIDTH             = 2;
 	localparam SET_ASSOCIATIVITY        = 1;
-	localparam NUMBER_OF_CACHES         = 2;
+	localparam NUMBER_OF_CACHES         = 4;
 	localparam CACHE_NUMBER_WIDTH			  = $clog2(NUMBER_OF_CACHES);
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
@@ -337,21 +337,21 @@ package testPackage;
 					bit[DATA_WIDTH - 1         : 0] dataMemory  = memory[collectedItem.address];
 					bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
 					bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
-					`uvm_info("READ ERROR", $sformatf("CACHE_NUMBER=%d, ADDRESS=%d, EXPECTED=%d, RECEIVED=%d", cacheNumber, address, dataMemory, dataCache), UVM_LOW)	
+					`uvm_error("READ ERROR", $sformatf("CACHE_NUMBER=%x, ADDRESS=%x, EXPECTED=%x, RECEIVED=%x", cacheNumber, address, dataMemory, dataCache))	
 				end else begin
 					bit[ADDRESS_WIDTH - 1      : 0] address     = collectedItem.address;
 					bit[DATA_WIDTH - 1         : 0] dataMemory  = memory[collectedItem.address];
 					bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
 					bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
 					
-					`uvm_info("READING", $sformatf("CACHE_NUMBER=%d, MEM[%d]=%d, CACHE[%d]=%d",cacheNumber, address, dataMemory, address, dataCache), UVM_LOW)
+					`uvm_info("READING", $sformatf("CACHE_NUMBER=%x, MEM[%x]=%x, CACHE[%x]=%x",cacheNumber, address, dataMemory, address, dataCache), UVM_LOW)
 				end
 			end else begin
 				bit[ADDRESS_WIDTH - 1      : 0] address     = collectedItem.address;
 				bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
 				bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
 
-				`uvm_info("WRITING", $sformatf("CACHE_NUMBER=%d, MEM[%d] = %d", cacheNumber,  address, dataCache), UVM_LOW)
+				`uvm_info("WRITING", $sformatf("CACHE_NUMBER=%x, MEM[%x] = %x", cacheNumber,  address, dataCache), UVM_LOW)
 				memory[collectedItem.address] = collectedItem.data;
 			end	
 		endfunction : checkBehaviour 
@@ -418,8 +418,8 @@ package testPackage;
 				fork
 					memoryRandomSequence[0].start(environment.agent.sequencer[0]);
 					memoryRandomSequence[1].start(environment.agent.sequencer[1]);
-					//memoryRandomSequence[2].start(environment.agent.sequencer[2]);
-					//memoryRandomSequence[3].start(environment.agent.sequencer[3]);
+					memoryRandomSequence[2].start(environment.agent.sequencer[2]);
+					memoryRandomSequence[3].start(environment.agent.sequencer[3]);
 				join
 			phase.drop_objection(.obj(this));
 		endtask : run_phase

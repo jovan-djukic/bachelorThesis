@@ -1,6 +1,6 @@
 interface TestInterface#(
-	int ADDRESS_WIDTH        = 32,
-	int DATA_WIDTH           = 32
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH   
 )();
 	import cases::*;
 
@@ -11,7 +11,7 @@ interface TestInterface#(
 
 	CPUCommandInterface cpuBusCommandInterface(), cpuControllerCommandInterface();
 
-	ArbiterInterface cpuArbiterArbiterInterface(), cpuDeviceArbiterInterface();
+	ArbiterInterface cpuArbiterArbiterInterface(), cpuDeviceArbiterInterface(), snoopyArbiterArbiterInterface(), snoopyDeviceArbiterInterface();
 
 	SnoopyCommandInterface snoopyBusCommandInterface(), snoopyControllerCommandInterface();
 
@@ -20,9 +20,11 @@ interface TestInterface#(
 		.DATA_WIDTH(DATA_WIDTH)
 	) snoopySlaveReadMemoryInterface(), snoopyMasterReadMemoryInterface();
 
-	logic cpuHit, snoopyHit;
+	logic cpuHit, snoopyHit, invalidateRequired;
 
 	bit clock;
 
 	ConcurrencyLockCase concurrencyLockCase;	
+
+	logic reset;
 endinterface : TestInterface

@@ -1,7 +1,7 @@
 interface TestInterface#(
-	int ADDRESS_WIDTH    = 16,
-	int DATA_WIDTH       = 16,
-	int NUMBER_OF_CACHES = 4
+	int ADDRESS_WIDTH,
+	int DATA_WIDTH,
+	int NUMBER_OF_CACHES
 )();
 
 	MemoryInterface#(
@@ -28,5 +28,4 @@ interface TestInterface#(
 
 	logic reset;
 	bit clock;
-
 endinterface : TestInterface

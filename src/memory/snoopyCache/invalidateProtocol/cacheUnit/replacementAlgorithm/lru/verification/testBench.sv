@@ -10,7 +10,8 @@ module TestBench();
 	always #5 testInterface.clock = ~testInterface.clock;
 
 	SetAssociativeLRU#(
-		.INDEX_WIDTH(INDEX_WIDTH)
+		.INDEX_WIDTH(INDEX_WIDTH),
+		.NUMBER_OF_CACHE_LINES(NUMBER_OF_CACHE_LINES)
 	) setAssociativeLRU(
 		.replacementAlgorithmInterface(testInterface.replacementAlgorithmInterface),
 		.cpuIndexIn(testInterface.cpuIndexIn),

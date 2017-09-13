@@ -1,5 +1,5 @@
 interface TestInterface#(
-	int NUMBER_OF_DEVICES = 4
+	int NUMBER_OF_DEVICES
 )();
 	ArbiterInterface arbiterInterfaces[NUMBER_OF_DEVICES]();
 

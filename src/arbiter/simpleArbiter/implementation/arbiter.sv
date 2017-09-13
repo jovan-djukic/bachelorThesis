@@ -1,5 +1,5 @@
 module Arbiter#(
-	int NUMBER_OF_DEVICES   = 4,
+	int NUMBER_OF_DEVICES,
 	int DEVICE_NUMBER_WIDTH = $clog2(NUMBER_OF_DEVICES)
 )(
 	ArbiterInterface.arbiter arbiterInterfaces[NUMBER_OF_DEVICES],
@@ -33,13 +33,4 @@ module Arbiter#(
 			grants[currentDevice] <= 0;
 		end
 	end
-
-	//always_comb begin
-	//	for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
-	//		grants[i] = 0;
-	//		 if ((| grants) == 0 && requests[i] == 1) begin
-	//			grants[i] = 1;
-	//		end
-	//	end	
-	//end
 endmodule : Arbiter

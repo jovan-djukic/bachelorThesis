@@ -1,5 +1,4 @@
 package testPackage;
-
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;

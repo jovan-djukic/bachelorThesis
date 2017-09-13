@@ -5,29 +5,27 @@ package testPackage;
 	import commands::*;
 	import states::*;
 
-	localparam ADDRESS_WIDTH            = 16;
-	localparam DATA_WIDTH               = 16;
-	localparam TAG_WIDTH                = 8;
-	localparam INDEX_WIDTH              = 4;
-	localparam OFFSET_WIDTH             = 4;
-	localparam SET_ASSOCIATIVITY        = 2;
+	localparam ADDRESS_WIDTH            = 8;
+	localparam DATA_WIDTH               = 8;
+	localparam TAG_WIDTH                = 4;
+	localparam INDEX_WIDTH              = 2;
+	localparam OFFSET_WIDTH             = 2;
+	localparam SET_ASSOCIATIVITY        = 1;
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
 	localparam STATE_TYPE OWNED_STATE		= DIRTY;
-	localparam SEQUENCE_ITEM_COUNT      = 1000;
+	localparam SEQUENCE_ITEM_COUNT      = 4000;
 	localparam TEST_INTERFACE           = "TestInterface";
 
-	localparam NUMBER_OF_WORDS_PER_LINE                           = 1 << OFFSET_WIDTH;
-	localparam CACHE_STATE_SET_LENGTH                             = 2;
-	localparam STATE_TYPE CACHE_STATE_SET[CACHE_STATE_SET_LENGTH] = {VALID, DIRTY};
-	localparam BUS_COMMAND_SET_LENGTH                             = 3;
-	localparam Command BUS_COMMAND_SET[BUS_COMMAND_SET_LENGTH]    = {BUS_READ, BUS_INVALIDATE, BUS_READ_EXCLUSIVE};
+	localparam NUMBER_OF_WORDS_PER_LINE                        = 1 << OFFSET_WIDTH;
+	localparam BUS_COMMAND_SET_LENGTH                          = 3;
+	localparam Command BUS_COMMAND_SET[BUS_COMMAND_SET_LENGTH] = {BUS_READ, BUS_INVALIDATE, BUS_READ_EXCLUSIVE};
 
 	class SnoopyControllerSequenceItem extends BasicSequenceItem;
 		bit[TAG_WIDTH - 1   : 0] tag;
 		bit[INDEX_WIDTH - 1 : 0] index;
 		bit[DATA_WIDTH - 1  : 0] data;
-		bit											 grant;
+		bit											 supply;
 		STATE_TYPE							 state;
 		Command							 		 command;
 
@@ -35,8 +33,7 @@ package testPackage;
 			`uvm_field_int(tag, UVM_ALL_ON)
 			`uvm_field_int(index, UVM_ALL_ON)
 			`uvm_field_int(data, UVM_ALL_ON)
-			`uvm_field_int(grant, UVM_ALL_ON)
-			`uvm_field_enum(STATE_TYPE, state, UVM_ALL_ON)
+			`uvm_field_int(supply, UVM_ALL_ON)
 			`uvm_field_enum(Command, command, UVM_ALL_ON)
 		`uvm_object_utils_end
 
@@ -48,8 +45,7 @@ package testPackage;
 			tag     = $urandom();
 			index   = $urandom();
 			data    = $urandom();
-			grant   = $urandom();
-			state   = CACHE_STATE_SET[$urandom() % CACHE_STATE_SET_LENGTH];
+			supply  = $urandom();
 			command = BUS_COMMAND_SET[$urandom() % BUS_COMMAND_SET_LENGTH];
 		endfunction : myRandomize
 	endclass : SnoopyControllerSequenceItem
@@ -108,18 +104,14 @@ package testPackage;
 			SnoopyControllerSequenceItem sequenceItem;
 			$cast(sequenceItem, req);
 
-			testInterface.slaveInterface.address     = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
-			testInterface.commandInterface.commandIn = sequenceItem.command;
-			if (sequenceItem.command == BUS_READ_EXCLUSIVE) begin
-				testInterface.arbiterInterface.grant = sequenceItem.grant;
-			end
+			testInterface.cpuCacheInterface.tagIn = sequenceItem.tag;
+			testInterface.cpuCacheInterface.index = sequenceItem.index;
+			testInterface.supply                  = sequenceItem.supply;
+
 			@(posedge testInterface.clock);
 
-			//if not hit write data to cache
-			if (testInterface.cacheInterface.hit == 0 && testInterface.commandInterface.commandIn == BUS_READ) begin
-				testInterface.cpuCacheInterface.tagIn   = sequenceItem.tag;
-				testInterface.cpuCacheInterface.index   = sequenceItem.index;
-				//testInterface.cpuCacheInterface.stateIn = sequenceItem.state;
+			//if not hit and supply enabled write to cache
+			if (testInterface.cpuCacheInterface.hit == 0 && testInterface.supply == 1) begin
 				testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
 
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
@@ -149,47 +141,52 @@ package testPackage;
 				testInterface.cpuCacheInterface.writeTag   = 1'bz;
 				testInterface.accessEnable                 = 1'bz;
 				testInterface.cpuCacheInterface.writeData  = 1'bz;
-				testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
-				testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
 			
 				@(posedge testInterface.clock);
-			end else if (testInterface.cacheInterface.hit == 1 && 
-									 testInterface.cacheInterface.stateOut != OWNED_STATE && 
-									 (testInterface.commandInterface.commandIn == BUS_READ || testInterface.commandInterface.commandIn == BUS_READ_EXCLUSIVE)) begin
-				testInterface.cpuCacheInterface.tagIn   = sequenceItem.tag;
-				testInterface.cpuCacheInterface.index   = sequenceItem.index;
-				testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
+			end else if (testInterface.cpuCacheInterface.hit == 1 && testInterface.cpuCacheInterface.stateOut != OWNED_STATE && testInterface.supply == 1) begin
+				testInterface.cpuCacheInterface.stateIn    = OWNED_STATE;
 				testInterface.cpuCacheInterface.writeState = 1;
 
 				repeat (2) begin
 					@(posedge testInterface.clock);
 				end
 
-				testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
-				testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
 				testInterface.cpuCacheInterface.writeState = 1'bz;
+				testInterface.cpuCacheInterface.stateIn    = INVALID_STATE;
 				@(posedge testInterface.clock);
 			end
 
+			testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
+			testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
+
+			testInterface.slaveInterface.address     = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
+			testInterface.commandInterface.commandIn = sequenceItem.command;
+			testInterface.arbiterInterface.grant     = sequenceItem.supply;
+
+			@(posedge testInterface.clock);
+
 			case (sequenceItem.command) 
 				BUS_READ: begin
-					wait (testInterface.arbiterInterface.request == 1);
-					testInterface.arbiterInterface.grant = 1;	
+					if (testInterface.cacheInterface.hit == 1) begin
+						if (testInterface.arbiterInterface.request == 1) begin
+							for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
+								wait (testInterface.slaveInterface.functionComplete == 0);
+								testInterface.slaveInterface.readEnabled = 1;
+								wait (testInterface.slaveInterface.functionComplete == 1);
+								testInterface.slaveInterface.readEnabled = 0;
+								testInterface.slaveInterface.address++;
+							end
 
-					if (testInterface.cacheInterface.stateOut != testInterface.protocolInterface.stateIn) begin
-						wait (testInterface.cacheInterface.writeState == 1);
-						wait (testInterface.cacheInterface.writeState == 0);
+							testInterface.slaveInterface.address -= NUMBER_OF_WORDS_PER_LINE;
+						end
+
+						if (testInterface.cacheInterface.stateOut != testInterface.protocolInterface.stateIn) begin
+							wait (testInterface.cacheInterface.writeState == 1);
+							wait (testInterface.cacheInterface.writeState == 0);
+						end
+						
+						testInterface.arbiterInterface.grant = 0;
 					end
-
-					for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
-						testInterface.slaveInterface.readEnabled = 1;
-						wait (testInterface.slaveInterface.functionComplete == 1);
-						testInterface.slaveInterface.readEnabled = 0;
-						wait (testInterface.slaveInterface.functionComplete == 0);
-						testInterface.slaveInterface.address++;
-					end
-
-					testInterface.arbiterInterface.grant = 0;
 				end
 
 				BUS_INVALIDATE: begin
@@ -203,36 +200,26 @@ package testPackage;
 				end
 
 				BUS_READ_EXCLUSIVE: begin
-					if (testInterface.cacheInterface.hit == 1 && testInterface.arbiterInterface.grant == 1) begin
-						wait (testInterface.arbiterInterface.request == 1);
-
-						for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
-							testInterface.slaveInterface.readEnabled = 1;
-							wait (testInterface.slaveInterface.functionComplete == 1);
-							testInterface.slaveInterface.readEnabled = 0;
-
-							if (i == (NUMBER_OF_WORDS_PER_LINE - 1)) begin
-								wait (testInterface.cacheInterface.writeState == 1);
-								wait (testInterface.invalidateEnable          == 1);
-								wait (testInterface.cacheInterface.writeState == 0);
-								wait (testInterface.invalidateEnable          == 0);
+					if (testInterface.cacheInterface.hit == 1) begin
+						if (testInterface.arbiterInterface.request == 1) begin
+							for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
+								wait (testInterface.slaveInterface.functionComplete == 0);
+								testInterface.slaveInterface.readEnabled = 1;
+								wait (testInterface.slaveInterface.functionComplete == 1);
+								testInterface.slaveInterface.readEnabled = 0;
+								testInterface.slaveInterface.address++;
 							end
 
-							wait (testInterface.slaveInterface.functionComplete == 0);
-							testInterface.slaveInterface.address++;
+							testInterface.slaveInterface.address -= NUMBER_OF_WORDS_PER_LINE;
 						end
-					end else begin
-						if (testInterface.commandInterface.isInvalidated == 0) begin
-							wait (testInterface.cacheInterface.writeState == 1);
-							wait (testInterface.invalidateEnable          == 1);
-							wait (testInterface.cacheInterface.writeState == 0);
-							wait (testInterface.invalidateEnable          == 0);
-						end
-					end
 
-					wait (testInterface.commandInterface.isInvalidated == 1);
-					testInterface.arbiterInterface.grant = 0;
-					@(posedge testInterface.clock);
+						wait (testInterface.cacheInterface.writeState == 1);
+						wait (testInterface.invalidateEnable          == 1);
+						wait (testInterface.cacheInterface.writeState == 0);
+						wait (testInterface.invalidateEnable          == 0);
+						
+						testInterface.arbiterInterface.grant = 0;
+					end
 				end
 			endcase
 
@@ -313,18 +300,15 @@ package testPackage;
 			SnoopyControllerCollectedItem collectedItem;
 			$cast(collectedItem, super.basicCollectedItem);
 			
-			//testInterface.slaveInterface.address     = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
-			//testInterface.commandInterface.commandIn = sequenceItem.command;
-			//if (sequenceItem.command == BUS_READ_EXCLUSIVE) begin
-			//	testInterface.arbiterInterface.grant = sequenceItem.grant;
-			//end
+			//testInterface.cpuCacheInterface.tagIn = sequenceItem.tag;
+			//testInterface.cpuCacheInterface.index = sequenceItem.index;
+			//testInterface.supply                  = sequenceItem.supply;
+
 			@(posedge testInterface.clock);
 
-			//if not hit write data to cache
-			if (testInterface.cacheInterface.hit == 0 && testInterface.commandInterface.commandIn == BUS_READ) begin
-				//testInterface.cpuCacheInterface.tagIn   = sequenceItem.tag;
-				//testInterface.cpuCacheInterface.index   = sequenceItem.index;
-				//testInterface.cpuCacheInterface.stateIn = sequenceItem.state;
+			//if not hit and supply enabled write to cache
+			if (testInterface.cpuCacheInterface.hit == 0 && testInterface.supply == 1) begin
+				//testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
 
 				for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
 					//testInterface.cpuCacheInterface.offset    = i;
@@ -353,14 +337,10 @@ package testPackage;
 				//testInterface.cpuCacheInterface.writeTag   = 1'bz;
 				//testInterface.accessEnable                 = 1'bz;
 				//testInterface.cpuCacheInterface.writeData  = 1'bz;
-				//testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
-				//testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
-
+			
 				@(posedge testInterface.clock);
-			end else if (testInterface.cacheInterface.hit == 1 && 
-									 testInterface.cacheInterface.stateOut != OWNED_STATE && 
-									 testInterface.commandInterface.commandIn == BUS_READ) begin
-				//testInterface.cpuCacheInterface.stateIn = OWNED_STATE;
+			end else if (testInterface.cpuCacheInterface.hit == 1 && testInterface.cpuCacheInterface.stateOut != OWNED_STATE && testInterface.supply == 1) begin
+				//testInterface.cpuCacheInterface.stateIn    = OWNED_STATE;
 				//testInterface.cpuCacheInterface.writeState = 1;
 
 				repeat (2) begin
@@ -368,42 +348,54 @@ package testPackage;
 				end
 
 				//testInterface.cpuCacheInterface.writeState = 1'bz;
+				//testInterface.cpuCacheInterface.stateIn    = INVALID_STATE;
 				@(posedge testInterface.clock);
 			end
 
+			//testInterface.cpuCacheInterface.tagIn      = {TAG_WIDTH{1'bz}};
+			//testInterface.cpuCacheInterface.index      = {INDEX_WIDTH{1'bz}};
+
+			//testInterface.slaveInterface.address     = {sequenceItem.tag, sequenceItem.index, {OFFSET_WIDTH{1'b0}}};
+			//testInterface.commandInterface.commandIn = sequenceItem.command;
+
+			@(posedge testInterface.clock);
 
 			collectedItem.commandIn         = testInterface.commandInterface.commandIn;
 			collectedItem.protocolCommandIn = testInterface.protocolInterface.commandIn;
 
 			case (collectedItem.commandIn) 
 				BUS_READ: begin
-					wait (testInterface.arbiterInterface.request == 1);
-					//testInterface.arbiterInterface.grant = 1;	
+					if (testInterface.cacheInterface.hit == 1) begin
+						if (testInterface.arbiterInterface.request == 1) begin
+							for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
+								wait (testInterface.slaveInterface.functionComplete == 0);
+								//testInterface.slaveInterface.readEnabled = 1;
+								wait (testInterface.slaveInterface.functionComplete == 1);
+								//testInterface.slaveInterface.readEnabled = 0;
 
-					if (testInterface.cacheInterface.stateOut != testInterface.protocolInterface.stateIn) begin
-						wait (testInterface.cacheInterface.writeState == 1);
+								collectedItem.slaveDataIns[testInterface.slaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.slaveInterface.dataIn;
+								collectedItem.cacheDataOuts[testInterface.cacheInterface.offset]                       = testInterface.cacheInterface.dataOut;
 
-						collectedItem.snoopyStateOut   = testInterface.cacheInterface.stateOut;
-						collectedItem.snoopyStateIn    = testInterface.cacheInterface.stateIn;
-						collectedItem.protocolStateOut = testInterface.protocolInterface.stateOut;
-						collectedItem.protocolStateIn  = testInterface.protocolInterface.stateIn;
+								//testInterface.slaveInterface.address++;
+							end
 
-						wait (testInterface.cacheInterface.writeState == 0);
+							//testInterface.slaveInterface.address -= NUMBER_OF_WORDS_PER_LINE;
+						end
+
+
+						if (testInterface.cacheInterface.stateOut != testInterface.protocolInterface.stateIn) begin
+							wait (testInterface.cacheInterface.writeState == 1);
+
+							collectedItem.snoopyStateOut   = testInterface.cacheInterface.stateOut;
+							collectedItem.snoopyStateIn    = testInterface.cacheInterface.stateIn;
+							collectedItem.protocolStateOut = testInterface.protocolInterface.stateOut;
+							collectedItem.protocolStateIn  = testInterface.protocolInterface.stateIn;
+
+							wait (testInterface.cacheInterface.writeState == 0);
+						end
+						
+						//testInterface.arbiterInterface.grant = 0;
 					end
-
-					for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
-						//testInterface.slaveInterface.readEnabled = 1;
-						wait (testInterface.slaveInterface.functionComplete == 1);
-						//testInterface.slaveInterface.readEnabled = 0;
-
-						collectedItem.slaveDataIns[testInterface.slaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.slaveInterface.dataIn;
-						collectedItem.cacheDataOuts[testInterface.cacheInterface.offset]                       = testInterface.cacheInterface.dataOut;
-
-						wait (testInterface.slaveInterface.functionComplete == 0);
-						//testInterface.slaveInterface.address++;
-					end
-
-					//testInterface.arbiterInterface.grant = 0;
 				end
 
 				BUS_INVALIDATE: begin
@@ -423,51 +415,36 @@ package testPackage;
 				end
 
 				BUS_READ_EXCLUSIVE: begin
-					if (testInterface.cacheInterface.hit == 1 && testInterface.arbiterInterface.grant == 1) begin
-						wait (testInterface.arbiterInterface.request == 1);
+					if (testInterface.cacheInterface.hit == 1) begin
+						if (testInterface.arbiterInterface.request == 1) begin
+							for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
+								wait (testInterface.slaveInterface.functionComplete == 0);
+								//testInterface.slaveInterface.readEnabled = 1;
+								wait (testInterface.slaveInterface.functionComplete == 1);
+								//testInterface.slaveInterface.readEnabled = 0;
 
-						for (int i = 0; i < NUMBER_OF_WORDS_PER_LINE; i++) begin
-							//testInterface.slaveInterface.readEnabled = 1;
-							wait (testInterface.slaveInterface.functionComplete == 1);
-							//testInterface.slaveInterface.readEnabled = 0;
+								collectedItem.slaveDataIns[testInterface.slaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.slaveInterface.dataIn;
+								collectedItem.cacheDataOuts[testInterface.cacheInterface.offset]                       = testInterface.cacheInterface.dataOut;
 
-							collectedItem.slaveDataIns[testInterface.slaveInterface.address[OFFSET_WIDTH - 1 : 0]] = testInterface.slaveInterface.dataIn;
-							collectedItem.cacheDataOuts[testInterface.cacheInterface.offset]                       = testInterface.cacheInterface.dataOut;
-
-							if (i == (NUMBER_OF_WORDS_PER_LINE - 1)) begin
-								wait (testInterface.cacheInterface.writeState == 1);
-								
-								collectedItem.snoopyStateOut   = testInterface.cacheInterface.stateOut;
-								collectedItem.snoopyStateIn    = testInterface.cacheInterface.stateIn;
-								collectedItem.protocolStateOut = testInterface.protocolInterface.stateOut;
-								collectedItem.protocolStateIn  = testInterface.protocolInterface.stateIn;
-
-								wait (testInterface.invalidateEnable          == 1);
-								wait (testInterface.cacheInterface.writeState == 0);
-								wait (testInterface.invalidateEnable          == 0);
+								//testInterface.slaveInterface.address++;
 							end
 
-							wait (testInterface.slaveInterface.functionComplete == 0);
-							//testInterface.slaveInterface.address++;
+							//testInterface.slaveInterface.address -= NUMBER_OF_WORDS_PER_LINE;
 						end
-					end else begin
-						if (testInterface.commandInterface.isInvalidated == 0) begin
-							wait (testInterface.cacheInterface.writeState == 1);
-								
-							collectedItem.snoopyStateOut   = testInterface.cacheInterface.stateOut;
-							collectedItem.snoopyStateIn    = testInterface.cacheInterface.stateIn;
-							collectedItem.protocolStateOut = testInterface.protocolInterface.stateOut;
-							collectedItem.protocolStateIn  = testInterface.protocolInterface.stateIn;
 
-							wait (testInterface.invalidateEnable          == 1);
-							wait (testInterface.cacheInterface.writeState == 0);
-							wait (testInterface.invalidateEnable          == 0);
-						end
+						wait (testInterface.cacheInterface.writeState == 1);
+
+						collectedItem.snoopyStateOut   = testInterface.cacheInterface.stateOut;
+						collectedItem.snoopyStateIn    = testInterface.cacheInterface.stateIn;
+						collectedItem.protocolStateOut = testInterface.protocolInterface.stateOut;
+						collectedItem.protocolStateIn  = testInterface.protocolInterface.stateIn;
+
+						wait (testInterface.invalidateEnable          == 1);
+						wait (testInterface.cacheInterface.writeState == 0);
+						wait (testInterface.invalidateEnable          == 0);
+						
+						//testInterface.arbiterInterface.grant = 0;
 					end
-
-					wait (testInterface.commandInterface.isInvalidated == 1);
-					//testInterface.arbiterInterface.grant = 0;
-					@(posedge testInterface.clock);
 				end
 			endcase
 

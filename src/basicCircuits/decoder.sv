@@ -1,5 +1,5 @@
 module Decoder#(
-	int INPUT_WIDTH	=	4,
+	int INPUT_WIDTH,
 	int NUMBER_OF_OUTPUTS = 1 << INPUT_WIDTH
 )(
 	input logic[INPUT_WIDTH - 1 : 0] inputSignal,

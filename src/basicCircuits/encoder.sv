@@ -1,5 +1,5 @@
 module Encoder#(
-	int NUMBER_OF_INPUTS = 4,
+	int NUMBER_OF_INPUTS,
 	int OUTPUT_WIDTH     = $clog2(NUMBER_OF_INPUTS)
 )(
 	input logic inputSignals[NUMBER_OF_INPUTS],

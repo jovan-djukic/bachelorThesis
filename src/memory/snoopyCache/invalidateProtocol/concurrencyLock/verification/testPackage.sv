@@ -11,7 +11,7 @@ package testPackage;
 	localparam SEQUENCE_ITEM_COUNT      = 1000;
 	localparam TEST_INTERFACE           = "TestInterface";
 
-	localparam CONCURRENCY_LOCK_CASE_SET_LENGTH = 12;
+	localparam CONCURRENCY_LOCK_CASE_SET_LENGTH = 13;
 	localparam ConcurrencyLockCase CONCURRENCY_LOCK_CASE_SET[CONCURRENCY_LOCK_CASE_SET_LENGTH] = {
 																																													READ_BUS_INVALIDATE_CPU_FIRST,
 																																													READ_BUS_INVALIDATE_SNOOPY_FIRST,
@@ -24,7 +24,8 @@ package testPackage;
 																																													WRITE_BUS_READ_EXCLUSIVE_CPU_FIRST,
 																																													WRITE_BUS_READ_EXCLUSIVE_SNOOPY_FIRST,
 																																													BUS_INVALIDATE_LOOP_BUS_INVALIDATE,
-																																													BUS_INVALIDATE_LOOP_BUS_READ_EXCLUSIVE
+																																													BUS_INVALIDATE_LOOP_BUS_READ_EXCLUSIVE,
+																																													WRITE_BACK_LOOP
 																																												};
 
 	class ConcurrencyLockSequenceItem extends BasicSequenceItem;
@@ -82,7 +83,12 @@ package testPackage;
 			testInterface.cpuHit                                     = 0;
 			testInterface.snoopyHit                                  = 0;
 
-			@(posedge testInterface.clock);
+			//@(posedge testInterface.clock);
+			testInterface.reset = 1;
+			repeat (2) begin
+				@(posedge testInterface.clock);
+			end
+			testInterface.reset = 0;
 		endtask : resetDUT
 
 		virtual task drive();
@@ -290,6 +296,7 @@ package testPackage;
 				WRITE_BUS_READ_CPU_FIRST: begin
 					testInterface.cpuHit = 1;
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 					
@@ -322,6 +329,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -381,6 +389,7 @@ package testPackage;
 					wait (testInterface.cpuSlaveMemoryInterface.dataOut == testInterface.cpuMasterMemoryInterface.dataOut);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -421,6 +430,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -434,6 +444,7 @@ package testPackage;
 				WRITE_BUS_INVALIDATE_CPU_FIRST: begin
 					testInterface.cpuHit                               = 1;
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 
@@ -454,6 +465,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 				
@@ -493,6 +505,7 @@ package testPackage;
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -513,6 +526,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -526,6 +540,7 @@ package testPackage;
 				WRITE_BUS_READ_EXCLUSIVE_CPU_FIRST: begin
 					testInterface.cpuHit                               = 1;
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 
@@ -546,6 +561,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 				
@@ -585,6 +601,7 @@ package testPackage;
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -605,6 +622,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -643,6 +661,22 @@ package testPackage;
 					testInterface.cpuBusCommandInterface.commandOut          = NONE;
 					testInterface.snoopyControllerCommandInterface.commandIn = NONE;
 					testInterface.cpuDeviceArbiterInterface.grant            = 0;
+				end
+
+				WRITE_BACK_LOOP: begin
+					testInterface.snoopyArbiterArbiterInterface.request = 1;
+
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 1);
+
+					testInterface.snoopyControllerCommandInterface.commandIn = BUS_WRITEBACK;
+					
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 0);
+
+					testInterface.snoopyControllerCommandInterface.commandIn = NONE;
+
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 1);
+					
+					testInterface.snoopyArbiterArbiterInterface.request = 0;
 				end
 			endcase
 
@@ -691,7 +725,12 @@ package testPackage;
 			testInterface.cpuHit                                     = 0;
 			testInterface.snoopyHit                                  = 0;
 
-			@(posedge testInterface.clock);
+			//@(posedge testInterface.clock);
+			testInterface.reset = 1;
+			repeat (2) begin
+				@(posedge testInterface.clock);
+			end
+			testInterface.reset = 0;
 		endtask : resetDUT
 
 		virtual task collect();
@@ -900,6 +939,7 @@ package testPackage;
 				WRITE_BUS_READ_CPU_FIRST: begin
 					//testInterface.cpuHit = 1;
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					//testInterface.invalidateRequired = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 					
@@ -932,6 +972,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					//testInterface.invalidateRequired = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -999,6 +1040,7 @@ package testPackage;
 					wait (testInterface.cpuSlaveMemoryInterface.dataOut == testInterface.cpuMasterMemoryInterface.dataOut);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					//testInterface.invalidateRequired = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1031,6 +1073,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					//testInterface.invalidateRequired = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1103,6 +1146,7 @@ package testPackage;
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					//testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1123,6 +1167,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					//testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1136,6 +1181,7 @@ package testPackage;
 				WRITE_BUS_READ_EXCLUSIVE_CPU_FIRST: begin
 					//testInterface.cpuHit                               = 1;
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					//testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 1);
 
@@ -1156,6 +1202,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					//testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 				
@@ -1195,6 +1242,7 @@ package testPackage;
 					wait (testInterface.cpuMasterMemoryInterface.dataOut == testInterface.cpuSlaveMemoryInterface.dataOut);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 1;
+					//testInterface.invalidateRequired                   = 1;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1215,6 +1263,7 @@ package testPackage;
 					@(posedge testInterface.clock);
 
 					//testInterface.cpuSlaveMemoryInterface.writeEnabled = 0;
+					//testInterface.invalidateRequired                   = 0;
 
 					wait (testInterface.cpuMasterMemoryInterface.writeEnabled == 0);
 
@@ -1253,6 +1302,22 @@ package testPackage;
 					//testInterface.cpuBusCommandInterface.commandOut          = NONE;
 					//testInterface.snoopyControllerCommandInterface.commandIn = NONE;
 					//testInterface.cpuDeviceArbiterInterface.grant            = 0;
+				end
+
+				WRITE_BACK_LOOP: begin
+					//testInterface.snoopyArbiterArbiterInterface.request = 1;
+
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 1);
+
+					//testInterface.snoopyControllerCommandInterface.commandIn = BUS_WRITEBACK;
+					
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 0);
+
+					//testInterface.snoopyControllerCommandInterface.commandIn = NONE;
+
+					wait (testInterface.snoopyDeviceArbiterInterface.request == 1);
+					
+					//testInterface.snoopyArbiterArbiterInterface.request = 0;
 				end
 			endcase
 

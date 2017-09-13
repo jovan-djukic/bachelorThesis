@@ -17,7 +17,7 @@ package basicTestPackage;
 
 	//basic sequence
 	class BasicSequence#(
-		int SEQUENCE_ITEM_COUNT = 50
+		int SEQUENCE_ITEM_COUNT
 	) extends uvm_sequence#(BasicSequenceItem);
 		`uvm_object_utils(BasicSequence#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT)))
 
@@ -209,7 +209,7 @@ package basicTestPackage;
 
 	//basic test
 	class BasicTest#(
-		int SEQUENCE_ITEM_COUNT = 50
+		int SEQUENCE_ITEM_COUNT
 	) extends uvm_test;
 		`uvm_component_utils(BasicTest#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT)))
 

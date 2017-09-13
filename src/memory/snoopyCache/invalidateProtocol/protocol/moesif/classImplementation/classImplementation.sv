@@ -15,7 +15,7 @@ package classImplementation;
 			return state == INVALID && write == 1 ? 1 : 0;
 		endfunction : readExclusiveRequired
 
-		function CacheLineState cpuStateIn(CacheLineState state, int read, int write, int sharedIn);
+		function CacheLineState cpuStateIn(CacheLineState state, int read, int write, int sharedIn, int ownedIn);
 			CacheLineState returnState = INVALID;
 			case (state)
 				MODIFIED: begin
@@ -48,7 +48,9 @@ package classImplementation;
 
 				INVALID: begin
 					if (read == 1) begin
-						if (sharedIn == 1) begin
+						if (ownedIn == 1) begin
+						 	returnState = SHARED;
+						end else if (sharedIn == 1) begin
 							returnState = FORWARD;
 						end else begin
 							returnState = EXCLUSIVE;
@@ -70,12 +72,16 @@ package classImplementation;
 		endfunction : cpuStateIn
 
 		function int request(CacheLineState state);
-			return state == MODIFIED || state == EXCLUSIVE || state == FORWARD ? 1 : 0;
+			return state == MODIFIED || state == EXCLUSIVE || state == FORWARD || state == OWNED ? 1 : 0;
 		endfunction : request
 
 		function int sharedOut(CacheLineState state);
 			return state != INVALID ? 1 : 0;
 		endfunction : sharedOut
+
+		function int ownedOut(CacheLineState state);
+			return state ==  OWNED ? 1 : 0;
+		endfunction : ownedOut
 
 		function CacheLineState snoopyStateIn(CacheLineState state, Command command);
 			CacheLineState returnState = INVALID;

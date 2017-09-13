@@ -1,6 +1,6 @@
 module Multiplexer#(
-	type PORT_TYPE          = logic[0 : 0],
-	int NUMBER_OF_INPUTS    = 4,
+	type PORT_TYPE,
+	int NUMBER_OF_INPUTS,
 	int SELECT_SIGNAL_WIDTH = $clog2(NUMBER_OF_INPUTS)
 )(
 	input PORT_TYPE inputSignals[NUMBER_OF_INPUTS],
