@@ -78,7 +78,7 @@ ram_verification : ram_implementation uvm_basic_test_package_source ram_test_fil
 
 #width adapter
 WIDTH_ADAPTER_SOURCE_DIRECTORY      = $(MEMORY_SOURCE_DIRECTORY)/widthAdapter
-WIDTH_ADAPTER_IMPLEMENTATION_SOURCE = $(WIDTH_ADAPTER_SOURCE_DIRECTORY)/*.sv
+WIDTH_ADAPTER_IMPLEMENTATION_SOURCE = $(WIDTH_ADAPTER_SOURCE_DIRECTORY)/implementation/*.sv
 
 width_adapter_implementation_source : $(WIDTH_ADAPTER_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
@@ -202,15 +202,27 @@ snoopy_invalidate_cpu_controller_implementation : memory_implementation_source \
 																									snoopy_invalidate_cpu_controller_implementation_source
 
 #write through invalidate protocol for testing
-SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/writeThroughInvalidate
-SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE = $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/states.sv \
-																									      $(SNOOPY_WRITE_THROUGH_INVALIDATE_SOURCE_DIRECTORY)/implementation/writeThroughInvalidate.sv 
+SNOOPY_WRITE_BACK_INVALIDATE_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/writeBackInvalidate
+SNOOPY_WRITE_BACK_INVALIDATE_IMPLEMENTATION_SOURCE = $(SNOOPY_WRITE_BACK_INVALIDATE_SOURCE_DIRECTORY)/implementation/writeBackInvalidateStates.sv \
+																									   $(SNOOPY_WRITE_BACK_INVALIDATE_SOURCE_DIRECTORY)/implementation/writeBackInvalidate.sv 
 
-snoopy_write_through_invalidate_implementation_source : $(SNOOPY_WRITE_THROUGH_INVALIDATE_IMPLEMENTATION_SOURCE)
+snoopy_write_back_invalidate_implementation_source : $(SNOOPY_WRITE_BACK_INVALIDATE_IMPLEMENTATION_SOURCE)
 	$(VLOG) $?
 
-snoopy_write_through_invalidate_implementation : snoopy_invalidate_protocol_implementation \
-																								 snoopy_write_through_invalidate_implementation_source
+snoopy_write_back_invalidate_implementation : snoopy_invalidate_protocol_implementation \
+																						  snoopy_write_back_invalidate_implementation_source
+
+#mesi protocl
+SNOOPY_MESI_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/mesi
+SNOOPY_MESI_IMPLEMENTATION_SOURCE = $(SNOOPY_MESI_SOURCE_DIRECTORY)/implementation/mesiStates.sv \
+																		$(SNOOPY_MESI_SOURCE_DIRECTORY)/implementation/mesiInterface.sv \
+																		$(SNOOPY_MESI_SOURCE_DIRECTORY)/implementation/mesi.sv 
+
+snoopy_mesi_implementation_source : $(SNOOPY_MESI_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+snoopy_mesi_implementation : snoopy_invalidate_protocol_implementation \
+														 snoopy_mesi_implementation_source
 
 #snoopy invalidate cpu controller verification
 SNOOPY_INVALIDATE_CPU_CONTROLLER_VERIFICATION_SOURCE = $(SNOOPY_INVALIDATE_CPU_CONTROLLER_SOURCE_DIRECTORY)/verification/testInterface.sv \
@@ -221,7 +233,7 @@ snoopy_invalidate_cpu_controller_verification_source : $(SNOOPY_INVALIDATE_CPU_C
 	$(UVM_COMMAND) $?
 
 snoopy_invalidate_cpu_controller_verification : snoopy_invalidate_set_associative_cache_implementation \
-																								snoopy_write_through_invalidate_implementation \
+																								snoopy_write_back_invalidate_implementation \
 																								snoopy_invalidate_cpu_controller_implementation \
 																								uvm_basic_test_package_source \
 																								snoopy_invalidate_cpu_controller_verification_source
@@ -250,7 +262,7 @@ snoopy_invalidate_snoopy_controller_verification_source : $(SNOOPY_INVALIDATE_SN
 	$(UVM_COMMAND) $? 
 
 snoopy_invalidate_snoopy_controller_verification : snoopy_invalidate_set_associative_cache_implementation \
-																									 snoopy_write_through_invalidate_implementation \
+																									 snoopy_write_back_invalidate_implementation \
 																									 snoopy_invalidate_snoopy_controller_implementation \
 																									 uvm_basic_test_package_source \
 																									 snoopy_invalidate_snoopy_controller_verification_source
@@ -312,7 +324,7 @@ snoopy_invalidate_bus_verification : memory_implementation_source \
 
 #moesif invalidate protocol for testing
 SNOOPY_MOESIF_SOURCE_DIRECTORY      = $(SNOOPY_INVALIDATE_PROTOCOL_SOURCE_DIRECTORY)/moesif
-SNOOPY_MOESIF_IMPLEMENTATION_SOURCE = $(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/states.sv \
+SNOOPY_MOESIF_IMPLEMENTATION_SOURCE = $(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/moesifStates.sv \
 																			$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/moesifInterface.sv \
 																			$(SNOOPY_MOESIF_SOURCE_DIRECTORY)/implementation/moesif.sv 
 
@@ -363,12 +375,14 @@ clean :
 	vmap work $(LIBRARY)
 
 MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/moesifCacheSystem
-MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testInterface.sv \
-																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testPackage.sv \
-																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/testBench.sv
+MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/implementation/moesifCacheSystem.sv 
+MOESIF_CACHE_SYSTEM_VERIFICATION_SOURCE   = $(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/dutInterface.sv \
+																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																						$(MOESIF_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testBench.sv
 
 moesif_cache_system_implementation_source : $(MOESIF_CACHE_SYSTEM_IMPLEMENTATION_SOURCE)
-	$(UVM_COMMAND) $?
+	$(VLOG) $?
 
 moesif_cache_system_implementation : memory_implementation_source \
 																		 snoopy_moesif_implementation \
@@ -378,7 +392,132 @@ moesif_cache_system_implementation : memory_implementation_source \
 																		 snoopy_invalidate_cache_implementation \
 																		 simple_arbiter_implementation \
 																		 snoopy_invalidate_bus_implementation \
-																		 ram_implementation \
 																		 moesif_cache_system_implementation_source
 
+moesif_cache_system_verification_source : $(MOESIF_CACHE_SYSTEM_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+moesif_cache_system_verification : moesif_cache_system_implementation \
+																	 memory_implementation_source \
+																	 ram_implementation \
+																	 moesif_cache_system_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
+#write back cache system
+WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/writeBackInvalidateCacheSystem
+WRITE_BACK_INVALIDATE_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY)/implementation/writeBackInvalidateCacheSystem.sv 
+WRITE_BACK_INVALIDATE_CACHE_SYSTEM_VERIFICATION_SOURCE   = $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/dutInterface.sv \
+																													 $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																													 $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																													 $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testBench.sv
+
+write_back_invalidate_cache_system_implementation_source : $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+write_back_invalidate_cache_system_implementation : memory_implementation_source \
+																		 								snoopy_write_back_invalidate_implementation \
+																		 								snoopy_invalidate_commands_implementation_source \
+																		 								arbiter_implementation_source \
+																		 								snoopy_invalidate_protocol_implementation \
+																		 								snoopy_invalidate_cache_implementation \
+																		 								simple_arbiter_implementation \
+																		 								snoopy_invalidate_bus_implementation \
+																		 								write_back_invalidate_cache_system_implementation_source 
+
+
+write_back_invalidate_cache_system_verification_source : $(WRITE_BACK_INVALIDATE_CACHE_SYSTEM_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+write_back_invalidate_cache_system_verification : memory_implementation_source \
+																									ram_implementation \
+																									write_back_invalidate_cache_system_implementation \
+																									write_back_invalidate_cache_system_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
+#mesi cache system
+MESI_CACHE_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/mesiCacheSystem
+MESI_CACHE_SYSTEM_IMPLEMENTATION_SOURCE = $(MESI_CACHE_SYSTEM_SOURCE_DIRECTORY)/implementation/mesiCacheSystem.sv
+MESI_CACHE_SYSTEM_VERIFICATION_SOURCE   = $(MESI_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/dutInterface.sv \
+																					$(MESI_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																					$(MESI_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																					$(MESI_CACHE_SYSTEM_SOURCE_DIRECTORY)/verification/testBench.sv
+
+mesi_cache_system_implementation_source : $(MESI_CACHE_SYSTEM_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+mesi_cache_system_implementation : memory_implementation_source \
+																	 snoopy_mesi_implementation \
+																	 snoopy_invalidate_commands_implementation_source \
+																	 arbiter_implementation_source \
+																	 snoopy_invalidate_protocol_implementation \
+																	 snoopy_invalidate_cache_implementation \
+																	 simple_arbiter_implementation \
+																	 snoopy_invalidate_bus_implementation \
+																	 ram_implementation \
+																	 mesi_cache_system_implementation_source 
+
+mesi_cache_system_verification_source : $(MESI_CACHE_SYSTEM_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+mesi_cache_system_verification : memory_implementation_source \
+																 ram_implementation \
+																 mesi_cache_system_implementation \
+																 mesi_cache_system_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
+#simple bus
+SIMPLE_BUS_SOURCE_DIRECTORY      = $(MEMORY_SOURCE_DIRECTORY)/bus
+SIMPLE_BUS_IMPLEMENTATION_SOURCE = $(SIMPLE_BUS_SOURCE_DIRECTORY)/implementation/*.sv
+
+simple_bus_implementation_source : $(SIMPLE_BUS_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+simple_bus_implementation : memory_implementation_source \
+														arbiter_implementation_source \
+														simple_bus_implementation_source
+
+#basic memory system
+BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY      = $(SRC)/basicMemorySystem
+BASIC_MEMORY_SYSTEM_IMPLEMENTATION_SOURCE = $(BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY)/implementation/basicMemorySystem.sv
+BASIC_MEMORY_SYSTEM_VERIFICATION_SOURCE   = $(BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY)/verification/dutInterface.sv \
+																						$(BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY)/verification/testInterface.sv \
+																						$(BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY)/verification/testPackage.sv \
+																						$(BASIC_MEMORY_SYSTEM_SOURCE_DIRECTORY)/verification/testBench.sv
+
+basic_memory_system_implementation_source : $(BASIC_MEMORY_SYSTEM_IMPLEMENTATION_SOURCE)
+	$(VLOG) $?
+
+basic_memory_system_implementation : memory_implementation_source \
+																	 	 arbiter_implementation_source \
+																	 	 simple_arbiter_implementation \
+																		 simple_bus_implementation \
+																	 	 basic_memory_system_implementation_source 
+
+basic_memory_system_verification_source : $(BASIC_MEMORY_SYSTEM_VERIFICATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+basic_memory_system_verification : basic_memory_system_implementation \
+																	 memory_implementation_source \
+																	 ram_implementation \
+																	 basic_memory_system_verification_source
+	$(MODELSIM_VERIFICATION_COMMAND)
+
+#comparison simulation
+COMPARISON_SIMULATION_SOURCE_DIRECTORY = $(SRC)/comparisonSimulation
+COMPARISON_SIMULATION_SOURCE           = $(COMPARISON_SIMULATION_SOURCE_DIRECTORY)/dutInterface.sv \
+																				 $(COMPARISON_SIMULATION_SOURCE_DIRECTORY)/testInterface.sv \
+																				 $(COMPARISON_SIMULATION_SOURCE_DIRECTORY)/testPackage.sv \
+																				 $(COMPARISON_SIMULATION_SOURCE_DIRECTORY)/testBench.sv
+
+comaprison_simulation_source : $(COMPARISON_SIMULATION_SOURCE)
+	$(UVM_COMMAND) $?
+
+
+comparison_simulation : basic_memory_system_implementation \
+												write_back_invalidate_cache_system_implementation \
+												mesi_cache_system_implementation \
+												moesif_cache_system_implementation \
+											  memory_implementation_source \
+												ram_implementation \
+												comaprison_simulation_source	
 	$(MODELSIM_VERIFICATION_COMMAND)

@@ -1,4 +1,4 @@
-package states;
+package MOESIFStates;
 	typedef enum logic[2 : 0] {
 		MODIFIED,
 		OWNED,
@@ -7,4 +7,4 @@ package states;
 		INVALID,
 		FORWARD	
 	} CacheLineState;
-endpackage : states
+endpackage : MOESIFStates

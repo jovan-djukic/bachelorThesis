@@ -53,9 +53,11 @@ module TestBench();
 		.STATE_TYPE(STATE_TYPE)
 	) cpuProtocolInterface();
 
-	WriteThroughInvalidate writeThroughInvalidate(
+	logic ramWriteRequired;
+	WriteBackInvalidate writeThroughInvalidate(
 		.cpuProtocolInterface(cpuProtocolInterface),
-		.snoopyProtocolInterface(testInterface.protocolInterface)
+		.snoopyProtocolInterface(testInterface.protocolInterface),
+		.ramWriteRequired(ramWriteRequired)
 	);
 
 	initial begin

@@ -4,7 +4,7 @@ package testPackage;
 	import basicTestPackage::*;
 	import classImplementation::*;
 	import commands::*;
-	import states::*;
+	import MOESIFStates::*;
 
 	localparam type STATE_TYPE                        = CacheLineState;
 	localparam STATE_SET_LENGTH                       = 6;

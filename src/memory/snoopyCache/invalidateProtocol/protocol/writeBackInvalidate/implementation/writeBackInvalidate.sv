@@ -1,8 +1,9 @@
-module WriteThroughInvalidate(
+module WriteBackInvalidate(
 	CPUProtocolInterface.protocol cpuProtocolInterface,
-	SnoopyProtocolInterface.protocol snoopyProtocolInterface
+	SnoopyProtocolInterface.protocol snoopyProtocolInterface,
+	output logic ramWriteRequired
 );
-	import states::*;
+	import writeBackInvalidateStates::*;
 	import commands::*;
 	
 	//cpu protocol table
@@ -37,6 +38,8 @@ module WriteThroughInvalidate(
 
 	//snoopy protocol table
 	assign snoopyProtocolInterface.request = snoopyProtocolInterface.stateOut == DIRTY ? 1 : 0;
+
+	assign ramWriteRequired = snoopyProtocolInterface.stateOut == DIRTY && snoopyProtocolInterface.commandIn == BUS_READ ? 1 : 0;
 	
 	always_comb begin
 		if (snoopyProtocolInterface.commandIn == BUS_READ) begin
@@ -49,5 +52,4 @@ module WriteThroughInvalidate(
 			snoopyProtocolInterface.stateIn = INVALID;
 		end			
 	end
-		
-endmodule : WriteThroughInvalidate
+endmodule : WriteBackInvalidate

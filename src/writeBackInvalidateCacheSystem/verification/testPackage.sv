@@ -1,20 +1,18 @@
 package testPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
-	import states::*;
 
-	localparam ADDRESS_WIDTH            = 8;
-	localparam DATA_WIDTH               = 8;
-	localparam TAG_WIDTH                = 4;
-	localparam INDEX_WIDTH              = 2;
-	localparam OFFSET_WIDTH             = 2;
-	localparam SET_ASSOCIATIVITY        = 1;
-	localparam NUMBER_OF_CACHES         = 4;
-	localparam CACHE_NUMBER_WIDTH			  = $clog2(NUMBER_OF_CACHES);
-	localparam type STATE_TYPE          = CacheLineState;
-	localparam STATE_TYPE INVALID_STATE = INVALID;
-	localparam SEQUENCE_ITEM_COUNT      = 400;
-	localparam TEST_INTERFACE           = "TestInterface";
+	localparam ADDRESS_WIDTH       = 8;
+	localparam DATA_WIDTH          = 8;
+	localparam TAG_WIDTH           = 4;
+	localparam INDEX_WIDTH         = 2;
+	localparam OFFSET_WIDTH        = 2;
+	localparam SET_ASSOCIATIVITY   = 1;
+	localparam NUMBER_OF_DEVICES   = 4;
+	localparam DEVICE_NUMBER_WIDTH = $clog2(NUMBER_OF_DEVICES);
+	localparam RAM_DELAY           = 4;
+	localparam SEQUENCE_ITEM_COUNT = 400;
+	localparam TEST_INTERFACE      = "TestInterface";
 
 	localparam NUMBER_OF_BLOCKS = 64;
 	localparam SIZE_IN_WORDS    = (1 << OFFSET_WIDTH) * NUMBER_OF_BLOCKS;
@@ -90,35 +88,21 @@ package testPackage;
 	class MemoryDriver extends uvm_driver#(MemorySequenceItem);
 		`uvm_component_utils(MemoryDriver)
 
-		virtual TestInterface#(
+		virtual DUTInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-			.DATA_WIDTH(DATA_WIDTH),
-			.NUMBER_OF_CACHES(NUMBER_OF_CACHES)
-		) testInterface;
-
-		int cacheNumber;
+			.DATA_WIDTH(DATA_WIDTH)
+		) dutInterface;
 
 		function new(string name = "MemoryDriver", uvm_component parent);
 			super.new(.name(name), .parent(parent));
-
-			cacheNumber = 0;
 		endfunction : new  
 
-		function void setCacheNumber(int cacheNumber);
-			this.cacheNumber = cacheNumber;
-		endfunction : setCacheNumber
-		
-		function void build_phase(uvm_phase phase);
-			super.build_phase(phase);
-	
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_CACHES(NUMBER_OF_CACHES)
-																	))::get(this, "", TEST_INTERFACE, testInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-		endfunction : build_phase
+		function void setDUTInterface(virtual DUTInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH)
+		) dutInterface);
+			this.dutInterface = dutInterface;
+		endfunction : setDUTInterface
 
 		virtual task run_phase(uvm_phase phase);
 			resetDUT();
@@ -130,42 +114,38 @@ package testPackage;
 		endtask : run_phase
 		
 		virtual task resetDUT();
-			if (cacheNumber == 0) begin
-				testInterface.reset = 1;
-			end
+			wait (dutInterface.reset == 1);
+			wait (dutInterface.reset == 0);
+			
+			dutInterface.memoryInterface.readEnabled  = 0;
+			dutInterface.memoryInterface.writeEnabled = 0;
 
-			repeat (2) begin
-				@(posedge testInterface.clock);
-			end
-			
-			if (cacheNumber == 0) begin
-				testInterface.reset = 0;
-			end
-			
-			wait (testInterface.functionComplete[cacheNumber] == 0);
+			wait (dutInterface.memoryInterface.functionComplete == 0);
 		endtask : resetDUT
 
 		virtual task drive();
-			testInterface.address[cacheNumber] = req.address;
+			dutInterface.memoryInterface.address = req.address;
 
 			if (req.isRead == 1) begin
-				testInterface.readEnabled[cacheNumber] = 1;
+				dutInterface.memoryInterface.readEnabled = 1;
 			end else begin
-				testInterface.writeEnabled[cacheNumber] = 1;
-				testInterface.dataOut[cacheNumber]      = req.data;
+				dutInterface.memoryInterface.writeEnabled = 1;
+				dutInterface.memoryInterface.dataOut      = req.data;
 			end
 
-			wait (testInterface.functionComplete[cacheNumber] == 1);
-			@(posedge testInterface.clock);
+			while (dutInterface.memoryInterface.functionComplete != 1) begin
+				@(posedge dutInterface.clock);	
+			end
 
 			if (req.isRead == 1) begin
-				testInterface.readEnabled[cacheNumber] <= 0;
+				dutInterface.memoryInterface.readEnabled <= 0;
 			end else begin
-				testInterface.writeEnabled[cacheNumber] <= 0;
+				dutInterface.memoryInterface.writeEnabled <= 0;
 			end
 
-			wait (testInterface.functionComplete[cacheNumber] == 0);
-			@(posedge testInterface.clock);
+			while (dutInterface.memoryInterface.functionComplete != 0) begin
+				@(posedge dutInterface.clock);	
+			end
 		endtask : drive;
 	endclass : MemoryDriver
 	
@@ -174,13 +154,11 @@ package testPackage;
 		bit[ADDRESS_WIDTH - 1 : 0] address;
 		bit[DATA_WIDTH - 1    : 0] data;
 		bit 											 isRead;
-		int 											 cacheNumber;
 
 		`uvm_object_utils_begin(MemoryCollectedItem)
 			`uvm_field_int(address, UVM_ALL_ON)
 			`uvm_field_int(data, UVM_ALL_ON)
 			`uvm_field_int(isRead, UVM_ALL_ON)
-			`uvm_field_int(cacheNumber, UVM_ALL_ON)
 		`uvm_object_utils_end
 
 		function new(string name = "MemoryCollectedItem");
@@ -194,11 +172,10 @@ package testPackage;
 
 		uvm_analysis_port#(MemoryCollectedItem) analysisPort;
 
-		virtual TestInterface#(
+		virtual DUTInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-			.DATA_WIDTH(DATA_WIDTH),
-			.NUMBER_OF_CACHES(NUMBER_OF_CACHES)
-		) testInterface;
+			.DATA_WIDTH(DATA_WIDTH)
+		) dutInterface;
 
 		MemoryCollectedItem collectedItem;
 
@@ -211,47 +188,46 @@ package testPackage;
 
 			analysisPort  = new(.name("analysisPort"), .parent(this));
 			collectedItem = MemoryCollectedItem::type_id::create(.name("memoryCollectedItem"));
-
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_CACHES(NUMBER_OF_CACHES)
-																	))::get(this, "", TEST_INTERFACE, testInterface)) begin
-				`uvm_fatal("NO VIRTAUL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
 		endfunction : build_phase	
+
+		function void setDUTInterface(virtual DUTInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH)
+		) dutInterface);
+			this.dutInterface = dutInterface;
+		endfunction : setDUTInterface
 
 		virtual task run_phase(uvm_phase phase);
 			resetDUT();
 			forever begin
-				for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
-					if (testInterface.functionComplete[i] == 1) begin
-						if (testInterface.readEnabled[i] == 1 || testInterface.writeEnabled[i] == 1) begin
-							collect(.cacheNumber(i));
-							analysisPort.write(collectedItem);
-						end
-					end
-				end
-				@(posedge testInterface.clock);
+				collect();
+				analysisPort.write(collectedItem);
 			end
 		endtask : run_phase
 
 		virtual task resetDUT();
-			for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
-				wait (testInterface.functionComplete[i] == 0);
-			end
+			wait (dutInterface.reset == 1);
+			wait (dutInterface.reset == 0);
+			wait (dutInterface.memoryInterface.functionComplete == 0);
 		endtask : resetDUT
 			
-		virtual task collect(int cacheNumber);
-			collectedItem.address = testInterface.address[cacheNumber];
-			if (testInterface.readEnabled[cacheNumber] == 1) begin
+		virtual task collect();
+			while (dutInterface.memoryInterface.functionComplete != 1) begin
+				@(posedge dutInterface.clock);	
+			end
+
+			collectedItem.address = dutInterface.memoryInterface.address;
+			if (dutInterface.memoryInterface.readEnabled == 1) begin
 				collectedItem.isRead = 1;
-				collectedItem.data 	 = testInterface.dataIn[cacheNumber];
+				collectedItem.data 	 = dutInterface.memoryInterface.dataIn;
 			end else begin
 				collectedItem.isRead = 0;
-				collectedItem.data	 = testInterface.dataOut[cacheNumber];
+				collectedItem.data	 = dutInterface.memoryInterface.dataOut;
 			end
-			collectedItem.cacheNumber = cacheNumber;
+
+			while (dutInterface.memoryInterface.functionComplete != 0) begin
+				@(posedge dutInterface.clock);	
+			end
 		endtask : collect
 	endclass : MemoryMonitor
 
@@ -261,8 +237,8 @@ package testPackage;
 
 		uvm_analysis_port#(MemoryCollectedItem) analysisPort;
 
-		MemorySequencer sequencer[NUMBER_OF_CACHES];
-		MemoryDriver driver[NUMBER_OF_CACHES];
+		MemorySequencer sequencer;
+		MemoryDriver driver;
 		MemoryMonitor monitor;
 
 		function new(string name = "MemoryAgent", uvm_component parent);
@@ -273,22 +249,23 @@ package testPackage;
 			super.build_phase(.phase(phase));
 
 			analysisPort = new(.name("analysisPort"), .parent(this));
-			for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
-				sequencer[i] = MemorySequencer::type_id::create(.name($sformatf("sequencer%d", i)), .parent(this));
-			end
-			for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
-				driver[i] = MemoryDriver::type_id::create(.name($sformatf("driver%d", i)), .parent(this));
-				driver[i].setCacheNumber(.cacheNumber(i));
-			end
-			monitor = MemoryMonitor::type_id::create(.name("monitor"), .parent(this));
+			sequencer = MemorySequencer::type_id::create(.name("sequencer"), .parent(this));
+			driver    = MemoryDriver::type_id::create(.name("driver"), .parent(this));
+			monitor   = MemoryMonitor::type_id::create(.name("monitor"), .parent(this));
 		endfunction : build_phase
+		
+		function void setDUTInterface(virtual DUTInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH)
+		) dutInterface);
+			driver.setDUTInterface(.dutInterface(dutInterface));
+			monitor.setDUTInterface(.dutInterface(dutInterface));	
+		endfunction : setDUTInterface
 
 		virtual function void connect_phase(uvm_phase phase);
 			super.connect_phase(.phase(phase));
 			
-			for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
-				driver[i].seq_item_port.connect(sequencer[i].seq_item_export);
-			end
+			driver.seq_item_port.connect(sequencer.seq_item_export);
 			monitor.analysisPort.connect(analysisPort);
 		endfunction : connect_phase
 	endclass : MemoryAgent
@@ -297,11 +274,10 @@ package testPackage;
 	class MemoryScoreboard extends uvm_scoreboard;
 		`uvm_component_utils(MemoryScoreboard)
 
-		uvm_analysis_export#(MemoryCollectedItem) analysisExport;
+		uvm_analysis_export#(MemoryCollectedItem) analysisExport[NUMBER_OF_DEVICES];
 		
-		uvm_tlm_analysis_fifo#(MemoryCollectedItem) analysisFifo;
+		uvm_tlm_analysis_fifo#(MemoryCollectedItem) analysisFifo[NUMBER_OF_DEVICES];
 
-		MemoryCollectedItem collectedItem;
 
 		logic [DATA_WIDTH - 1 : 0] memory[SIZE_IN_WORDS];
 
@@ -312,46 +288,56 @@ package testPackage;
 		virtual function void build_phase(uvm_phase phase);
 			super.build_phase(.phase(phase));
 			
-			analysisExport = new(.name("analysisExport"), .parent(this));
-			analysisFifo   = new(.name("analysisFifo"), .parent(this));
-			collectedItem  = MemoryCollectedItem::type_id::create(.name("collectedItem"));
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				analysisExport[i] = new(.name($sformatf("analysisExport%d", i)), .parent(this));
+				analysisFifo[i]   = new(.name($sformatf("analysisFifo%d", i)), .parent(this));
+			end
 		endfunction : build_phase
 
 		virtual function void connect_phase(uvm_phase phase);
 			super.connect_phase(.phase(phase));
 
-			analysisExport.connect(analysisFifo.analysis_export);
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				analysisExport[i].connect(analysisFifo[i].analysis_export);
+			end
 		endfunction : connect_phase
 
 		virtual task run();
+			MemoryCollectedItem collectedItem;
+			bit[DEVICE_NUMBER_WIDTH - 1 : 0] deviceNumber;
+			collectedItem  = MemoryCollectedItem::type_id::create(.name("collectedItem"));
+
 			forever begin
-				analysisFifo.get(collectedItem);
-				checkBehaviour();
+				#1;
+				deviceNumber = 0;
+				for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+					if (analysisFifo[i].try_get(collectedItem) == 1) begin
+						checkBehaviour(.collectedItem(collectedItem), .deviceNumber(deviceNumber));
+					end
+					deviceNumber++;
+				end
 			end
 		endtask : run
 
-		virtual function void checkBehaviour();
+		virtual function void checkBehaviour(MemoryCollectedItem collectedItem, bit[DEVICE_NUMBER_WIDTH - 1 : 0] deviceNumber);
 			if (collectedItem.isRead) begin
 				if (collectedItem.data != memory[collectedItem.address]) begin
 					bit[ADDRESS_WIDTH - 1      : 0] address     = collectedItem.address;
 					bit[DATA_WIDTH - 1         : 0] dataMemory  = memory[collectedItem.address];
-					bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
-					bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
-					`uvm_error("READ ERROR", $sformatf("CACHE_NUMBER=%x, ADDRESS=%x, EXPECTED=%x, RECEIVED=%x", cacheNumber, address, dataMemory, dataCache))	
+					bit[DATA_WIDTH - 1         : 0] dataDevice   = collectedItem.data;
+					`uvm_error("READ ERROR", $sformatf("DEVICE_NUMBER=%x, ADDRESS=%x, EXPECTED=%x, RECEIVED=%x", deviceNumber, address, dataMemory, dataDevice))	
 				end else begin
 					bit[ADDRESS_WIDTH - 1      : 0] address     = collectedItem.address;
 					bit[DATA_WIDTH - 1         : 0] dataMemory  = memory[collectedItem.address];
-					bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
-					bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
+					bit[DATA_WIDTH - 1         : 0] dataDevice   = collectedItem.data;
 					
-					`uvm_info("READING", $sformatf("CACHE_NUMBER=%x, MEM[%x]=%x, CACHE[%x]=%x",cacheNumber, address, dataMemory, address, dataCache), UVM_LOW)
+					`uvm_info("READING", $sformatf("DEVICE_NUMBER=%x, MEM[%x]=%x, DEVICE[%x]=%x",deviceNumber, address, dataMemory, address, dataDevice), UVM_LOW)
 				end
 			end else begin
 				bit[ADDRESS_WIDTH - 1      : 0] address     = collectedItem.address;
-				bit[DATA_WIDTH - 1         : 0] dataCache   = collectedItem.data;
-				bit[CACHE_NUMBER_WIDTH - 1 : 0] cacheNumber = collectedItem.cacheNumber;
+				bit[DATA_WIDTH - 1         : 0] dataDevice   = collectedItem.data;
 
-				`uvm_info("WRITING", $sformatf("CACHE_NUMBER=%x, MEM[%x] = %x", cacheNumber,  address, dataCache), UVM_LOW)
+				`uvm_info("WRITING", $sformatf("DEVICE_NUMBER=%x, MEM[%x]=%x", deviceNumber,  address, dataDevice), UVM_LOW)
 				memory[collectedItem.address] = collectedItem.data;
 			end	
 		endfunction : checkBehaviour 
@@ -361,8 +347,14 @@ package testPackage;
 	class MemoryEnvironment extends uvm_env;
 		`uvm_component_utils(MemoryEnvironment)
 
-		MemoryAgent agent;
+		MemoryAgent agent[NUMBER_OF_DEVICES];
 		MemoryScoreboard scoreboard;
+
+		virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) testInterface;
 
 		function new(string name = "MemoryEnvironment", uvm_component parent);
 			super.new(.name(name), .parent(parent));
@@ -371,15 +363,48 @@ package testPackage;
 		virtual function void build_phase(uvm_phase phase);
 			super.build_phase(.phase(phase));
 
-			agent      = MemoryAgent::type_id::create(.name("agent"), .parent(this));
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				agent[i] = MemoryAgent::type_id::create(.name($sformatf("agent%d", i)), .parent(this));
+			end
 			scoreboard = MemoryScoreboard::type_id::create(.name("scoreboard"), .parent(this));
 		endfunction : build_phase
 
 		virtual function void connect_phase(uvm_phase phase);
 			super.connect_phase(.phase(phase));
 
-			agent.analysisPort.connect(scoreboard.analysisExport);
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				agent[i].analysisPort.connect(scoreboard.analysisExport[i]);
+			end
 		endfunction : connect_phase
+
+		virtual function void setTestInterface(virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) testInterface);
+	
+			this.testInterface = testInterface;
+
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				agent[i].setDUTInterface(.dutInterface(testInterface.dutInterface[i]));
+			end
+		endfunction : setTestInterface
+
+		task run_phase(uvm_phase phase);
+			super.run_phase(.phase(phase));
+
+			testInterface.reset = 1;
+			repeat (2) begin
+				@(posedge testInterface.clock);
+			end
+			testInterface.reset = 0;
+		endtask : run_phase
+
+		virtual function void report_phase(uvm_phase phase);
+			super.report_phase(.phase(phase));
+
+			`uvm_info("PERFORMANCE", $sformatf("NUMBER OF CLOCKS IS %d", testInterface.clockCounter), UVM_LOW)
+		endfunction : report_phase
 	endclass : MemoryEnvironment
 
 	//memory test
@@ -388,14 +413,35 @@ package testPackage;
 
 		MemoryEnvironment environment;
 
+		virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) testInterface;
+
 		function new(string name = "MemoryTest", uvm_component parent);
 			super.new(.name(name), .parent(parent));
 		endfunction : new
 
 		virtual function void build_phase(uvm_phase phase);
 			super.build_phase(.phase(phase));
+
+			if (!uvm_config_db#(virtual TestInterface#(
+																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
+																		.DATA_WIDTH(DATA_WIDTH),
+																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+																	))::get(this, "", TEST_INTERFACE, testInterface)) begin
+				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
+			end
+
 			environment = MemoryEnvironment::type_id::create(.name("environment"), .parent(this));
 		endfunction : build_phase
+
+		virtual function void connect_phase(uvm_phase phase);
+			super.connect_phase(.phase(phase));
+
+			environment.setTestInterface(.testInterface(testInterface));
+		endfunction : connect_phase
 		
 		virtual function void end_of_elaboration_phase(uvm_phase phase);
 			super.end_of_elaboration_phase(.phase(phase));
@@ -406,22 +452,26 @@ package testPackage;
 
 		virtual task run_phase(uvm_phase phase);
 			MemoryResetSequence memoryResetSequence;	
-			MemoryRandomSequence memoryRandomSequence[NUMBER_OF_CACHES];
+			MemoryRandomSequence memoryRandomSequence[NUMBER_OF_DEVICES];
 
 			memoryResetSequence  = MemoryResetSequence::type_id::create(.name("memoryResetSequence"));
-			for (int i = 0; i < NUMBER_OF_CACHES; i++) begin
+			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
 				memoryRandomSequence[i] = MemoryRandomSequence::type_id::create(.name("memoryRandomSequence"));
 			end
 
 			phase.raise_objection(.obj(this));
-				memoryResetSequence.start(environment.agent.sequencer[0]);
+				testInterface.testDone = 0;
+				memoryResetSequence.start(environment.agent[0].sequencer);
+				testInterface.testDone = 1;
 				fork
-					memoryRandomSequence[0].start(environment.agent.sequencer[0]);
-					memoryRandomSequence[1].start(environment.agent.sequencer[1]);
-					memoryRandomSequence[2].start(environment.agent.sequencer[2]);
-					memoryRandomSequence[3].start(environment.agent.sequencer[3]);
+					memoryRandomSequence[0].start(environment.agent[0].sequencer);
+					memoryRandomSequence[1].start(environment.agent[1].sequencer);
+					memoryRandomSequence[2].start(environment.agent[2].sequencer);
+					memoryRandomSequence[3].start(environment.agent[3].sequencer);
 				join
+				testInterface.testDone = 0;
 			phase.drop_objection(.obj(this));
+
 		endtask : run_phase
 	endclass : MemoryTest
 endpackage : testPackage

@@ -1,7 +1,6 @@
 module TestBench();
 	import uvm_pkg::*;
 	import testPackage::*;
-	import commands::*;
 
 	TestInterface#(
 		.STATE_TYPE(STATE_TYPE)

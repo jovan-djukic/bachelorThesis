@@ -3,7 +3,7 @@ package testPackage;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;
 	import commands::*;
-	import states::*;
+	import writeBackInvalidateStates::*;
 
 	localparam ADDRESS_WIDTH            = 8;
 	localparam DATA_WIDTH               = 8;

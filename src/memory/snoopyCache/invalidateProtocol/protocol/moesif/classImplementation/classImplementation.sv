@@ -1,6 +1,6 @@
 package classImplementation;
 	import commands::*;
-	import states::*;
+	import MOESIFStates::*;
 
 	class MOESIFClassImplementation;
 		function int writeBackRequired(CacheLineState state);
