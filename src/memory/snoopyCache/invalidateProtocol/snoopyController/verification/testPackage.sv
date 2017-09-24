@@ -3,7 +3,7 @@ package testPackage;
 	`include "uvm_macros.svh"
 	import basicTestPackage::*;
 	import commands::*;
-	import writeBackInvalidateStates::*;
+	import MSIStates::*;
 
 	localparam ADDRESS_WIDTH            = 8;
 	localparam DATA_WIDTH               = 8;
@@ -13,7 +13,7 @@ package testPackage;
 	localparam SET_ASSOCIATIVITY        = 1;
 	localparam type STATE_TYPE          = CacheLineState;
 	localparam STATE_TYPE INVALID_STATE = INVALID;
-	localparam STATE_TYPE OWNED_STATE		= DIRTY;
+	localparam STATE_TYPE OWNED_STATE		= MODIFIED;
 	localparam SEQUENCE_ITEM_COUNT      = 4000;
 	localparam TEST_INTERFACE           = "TestInterface";
 

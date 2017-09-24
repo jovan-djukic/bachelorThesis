@@ -6,7 +6,8 @@ package testPackage;
 	localparam ADDRESS_WIDTH       = 16;
 	localparam DATA_WIDTH          = 16;
 	localparam SIZE                = 1024;
-	localparam SEQUENCE_ITEM_COUNT = 50;
+	localparam SEQUENCE_ITEM_COUNT = 500;
+	localparam IS_TEST             = 1;
 	localparam TEST_INTERFACE      = "TestInterface";
 
 	//memory sequence item
@@ -32,81 +33,6 @@ package testPackage;
 			isRead	=	$urandom();
 		endfunction : myRandomize
 	endclass : MemorySequenceItem
-
-	//memory sequences
-	//memory reset sequence
-	class MemoryResetSequence extends uvm_sequence#(MemorySequenceItem);
-
-		`uvm_object_utils(MemoryResetSequence)
-
-		function new(string name = "MemoryResetSequence");
-			super.new(name);
-		endfunction : new
-
-		virtual task body();
-			MemorySequenceItem memorySequenceItem = MemorySequenceItem::type_id::create(.name("memorySequenceItem"));
-
-			for (int i = 0; i < SIZE; i++) begin
-				start_item(memorySequenceItem);
-					memorySequenceItem.address = i;
-					memorySequenceItem.data    = 0;
-					memorySequenceItem.isRead  = 0;
-				finish_item(memorySequenceItem);	
-			end
-		endtask : body
-	endclass : MemoryResetSequence
-
-	//memory write read sequence
-	class MemoryWriteReadSequence extends uvm_sequence#(MemorySequenceItem);
-
-		`uvm_object_utils(MemoryWriteReadSequence)
-		int addressQueue[$];
-
-		function new(string name = "MemorySequence");
-			super.new(name);
-		endfunction : new
-
-		task body();
-			MemorySequenceItem memorySequenceItem;
-
-			repeat (SEQUENCE_ITEM_COUNT) begin
-				memorySequenceItem = MemorySequenceItem::type_id::create(.name("memorySequenceItem"));
-				
-				start_item(memorySequenceItem);
-					memorySequenceItem.myRandomize();
-					addressQueue.push_back(memorySequenceItem.address);
-					memorySequenceItem.isRead = 0;
-				finish_item(memorySequenceItem);	
-			end
-
-			repeat (SEQUENCE_ITEM_COUNT) begin
-				memorySequenceItem = MemorySequenceItem::type_id::create(.name("memorySequenceItem"));
-				
-				start_item(memorySequenceItem);
-					memorySequenceItem.address = addressQueue.pop_front();
-					memorySequenceItem.isRead  = 1;
-				finish_item(memorySequenceItem);	
-			end
-		endtask : body
-	endclass : MemoryWriteReadSequence
-	
-	//memory virtual sequence
-	class MemoryVirtualSequence extends BasicSequence#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT));
-
-		`uvm_object_utils(MemoryVirtualSequence)
-
-		function new(string name = "MemorySequence");
-			super.new(name);
-		endfunction : new
-
-		virtual task body();
-			MemoryResetSequence memoryResetSequence         = MemoryResetSequence::type_id::create("memoryResetSequence");
-			MemoryWriteReadSequence memoryWriteReadSequence = MemoryWriteReadSequence::type_id::create("memoryWriteReadSequence");
-
-			memoryResetSequence.start(.sequencer(m_sequencer), .parent_sequence(this));
-			memoryWriteReadSequence.start(.sequencer(m_sequencer), .parent_sequence(this));
-		endtask : body
-	endclass : MemoryVirtualSequence
 
 	//memory driver
 	class MemoryDriver extends BasicDriver;
@@ -238,6 +164,10 @@ package testPackage;
 
 		function new(string name = "MemoryScoreboard", uvm_component parent);
 			super.new(name, parent);
+
+			for (int i = 0; i < SIZE; i++) begin
+				memory[i] = 0;
+			end
 		endfunction : new
 
 		function void build_phase(uvm_phase phase);
@@ -274,7 +204,6 @@ package testPackage;
 
 		virtual function void registerReplacements();
 			BasicSequenceItem::type_id::set_type_override(MemorySequenceItem::get_type(), 1);
-			BasicSequence#(.SEQUENCE_ITEM_COUNT(SEQUENCE_ITEM_COUNT))::type_id::set_type_override(MemoryVirtualSequence::get_type(), 1);
 			BasicDriver::type_id::set_type_override(MemoryDriver::get_type(), 1);
 			BasicCollectedItem::type_id::set_type_override(MemoryCollectedItem::get_type(), 1);
 			BasicMonitor::type_id::set_type_override(MemoryMonitor::get_type(), 1);

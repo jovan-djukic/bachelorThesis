@@ -1,9 +1,10 @@
 module RAM#(
 	int DATA_WIDTH,
 	int SIZE_IN_WORDS,
-	int DELAY         = 4,
-	int COUNTER_WIDTH = $clog2(DELAY),
-	string	INIT_FILE = ""
+	int DELAY          = 4,
+	int COUNTER_WIDTH  = $clog2(DELAY),
+	string	INIT_FILE  = "",
+	int IS_TEST        = 0
 )(
 	MemoryInterface.slave memoryInterface,
 	input logic clock
@@ -17,6 +18,10 @@ module RAM#(
 	initial begin
 		if (INIT_FILE != "") begin
 			$readmemh(INIT_FILE, memory);
+		end else if (IS_TEST == 1) begin
+			for (int i = 0; i < SIZE_IN_WORDS; i++) begin
+				memory[i] = 0;
+			end
 		end
 	end
 

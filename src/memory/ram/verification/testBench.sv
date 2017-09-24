@@ -9,7 +9,8 @@ module TestBench();
 	RAM#(
 		.DATA_WIDTH(DATA_WIDTH),
 		.SIZE_IN_WORDS(SIZE),
-		.DELAY(4)
+		.DELAY(4),
+		.IS_TEST(IS_TEST)
 	) ram(
 		.memoryInterface(testInterface.memoryInterface),
 		.clock(testInterface.clock)

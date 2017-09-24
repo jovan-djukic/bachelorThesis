@@ -54,7 +54,7 @@ module TestBench();
 	) cpuProtocolInterface();
 
 	logic ramWriteRequired;
-	WriteBackInvalidate writeThroughInvalidate(
+	MSI msi(
 		.cpuProtocolInterface(cpuProtocolInterface),
 		.snoopyProtocolInterface(testInterface.protocolInterface),
 		.ramWriteRequired(ramWriteRequired)

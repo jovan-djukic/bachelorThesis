@@ -51,45 +51,46 @@ module TestBench();
 		RAM#(
 			.DATA_WIDTH(DATA_WIDTH),
 			.SIZE_IN_WORDS(SIZE_IN_WORDS),
-			.DELAY(RAM_DELAY)
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
 		) basicRam(
 			.memoryInterface(basicRamMemoryInterface),
 			.clock(basicTestInterface.clock)
 		);
 	//BASIC_END
 
-	//WRITE_BACK_INVALIDATE_BEGIN
+	//MSI_BEGIN
 		TestInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-		) writeBackInvalidateTestInterface();
+		) msiTestInterface();
 
-		always #5 writeBackInvalidateTestInterface.clock = ~writeBackInvalidateTestInterface.clock;
-
-		MemoryInterface#(
-			.ADDRESS_WIDTH(ADDRESS_WIDTH),
-			.DATA_WIDTH(DATA_WIDTH)
-		) writeBackInvalidateMemoryInterface[NUMBER_OF_DEVICES]();
+		always #5 msiTestInterface.clock = ~msiTestInterface.clock;
 
 		MemoryInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH)
-		) writeBackInvalidateRamMemoryInterface();
+		) msiMemoryInterface[NUMBER_OF_DEVICES]();
+
+		MemoryInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH)
+		) msiRamMemoryInterface();
 
 		generate
 			for (i = 0; i < NUMBER_OF_DEVICES; i++) begin
-				assign writeBackInvalidateMemoryInterface[i].address      = writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.address;
-				assign writeBackInvalidateMemoryInterface[i].dataOut      = writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.dataOut;
-				assign writeBackInvalidateMemoryInterface[i].readEnabled  = writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.readEnabled;
-				assign writeBackInvalidateMemoryInterface[i].writeEnabled = writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.writeEnabled;
+				assign msiMemoryInterface[i].address      = msiTestInterface.dutInterface[i].memoryInterface.address;
+				assign msiMemoryInterface[i].dataOut      = msiTestInterface.dutInterface[i].memoryInterface.dataOut;
+				assign msiMemoryInterface[i].readEnabled  = msiTestInterface.dutInterface[i].memoryInterface.readEnabled;
+				assign msiMemoryInterface[i].writeEnabled = msiTestInterface.dutInterface[i].memoryInterface.writeEnabled;
 
-				assign writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.dataIn           = writeBackInvalidateMemoryInterface[i].dataIn;
-				assign writeBackInvalidateTestInterface.dutInterface[i].memoryInterface.functionComplete = writeBackInvalidateMemoryInterface[i].functionComplete;
+				assign msiTestInterface.dutInterface[i].memoryInterface.dataIn           = msiMemoryInterface[i].dataIn;
+				assign msiTestInterface.dutInterface[i].memoryInterface.functionComplete = msiMemoryInterface[i].functionComplete;
 			end
 		endgenerate
 
-		WriteBackInvalidateCacheSystem#(
+		MSICacheSystem#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.TAG_WIDTH(TAG_WIDTH),
@@ -97,23 +98,24 @@ module TestBench();
 			.OFFSET_WIDTH(OFFSET_WIDTH),
 			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-		) writeBackInvalidateCacheSystem(
-			.deviceMemoryInterface(writeBackInvalidateMemoryInterface),
-			.ramMemoryInterface(writeBackInvalidateRamMemoryInterface),
-			.clock(writeBackInvalidateTestInterface.clock),
-			.reset(writeBackInvalidateTestInterface.reset)
+		) msiCacheSystem(
+			.deviceMemoryInterface(msiMemoryInterface),
+			.ramMemoryInterface(msiRamMemoryInterface),
+			.clock(msiTestInterface.clock),
+			.reset(msiTestInterface.reset)
 		);
 
 		//ram memory
 		RAM#(
 			.DATA_WIDTH(DATA_WIDTH),
 			.SIZE_IN_WORDS(SIZE_IN_WORDS),
-			.DELAY(RAM_DELAY)
-		) writeBackInvalidateRam(
-			.memoryInterface(writeBackInvalidateRamMemoryInterface),
-			.clock(writeBackInvalidateTestInterface.clock)
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
+		) msiRam(
+			.memoryInterface(msiRamMemoryInterface),
+			.clock(msiTestInterface.clock)
 		);
-	//WRITE_BACK_INVALIDATE_END
+	//MSI_END
 
 	//MESI_BEGIN
 		TestInterface#(
@@ -165,12 +167,129 @@ module TestBench();
 		RAM#(
 			.DATA_WIDTH(DATA_WIDTH),
 			.SIZE_IN_WORDS(SIZE_IN_WORDS),
-			.DELAY(RAM_DELAY)
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
 		) mesiRam(
 			.memoryInterface(mesiRamMemoryInterface),
 			.clock(mesiTestInterface.clock)
 		);
 	//MESI_END
+
+	//MESIF_BEGIN
+		TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) mesifTestInterface();
+
+		always #5 mesifTestInterface.clock = ~mesifTestInterface.clock;
+
+		MemoryInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH)
+		) mesifMemoryInterface[NUMBER_OF_DEVICES]();
+
+		MemoryInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH)
+		) mesifRamMemoryInterface();
+
+		generate
+			for (i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				assign mesifMemoryInterface[i].address      = mesifTestInterface.dutInterface[i].memoryInterface.address;
+				assign mesifMemoryInterface[i].dataOut      = mesifTestInterface.dutInterface[i].memoryInterface.dataOut;
+				assign mesifMemoryInterface[i].readEnabled  = mesifTestInterface.dutInterface[i].memoryInterface.readEnabled;
+				assign mesifMemoryInterface[i].writeEnabled = mesifTestInterface.dutInterface[i].memoryInterface.writeEnabled;
+
+				assign mesifTestInterface.dutInterface[i].memoryInterface.dataIn           = mesifMemoryInterface[i].dataIn;
+				assign mesifTestInterface.dutInterface[i].memoryInterface.functionComplete = mesifMemoryInterface[i].functionComplete;
+			end
+		endgenerate
+
+		MESIFCacheSystem#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.TAG_WIDTH(TAG_WIDTH),
+			.INDEX_WIDTH(INDEX_WIDTH),
+			.OFFSET_WIDTH(OFFSET_WIDTH),
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) mesifCacheSystem(
+			.deviceMemoryInterface(mesifMemoryInterface),
+			.ramMemoryInterface(mesifRamMemoryInterface),
+			.clock(mesifTestInterface.clock),
+			.reset(mesifTestInterface.reset)
+		);
+
+		//ram memory
+		RAM#(
+			.DATA_WIDTH(DATA_WIDTH),
+			.SIZE_IN_WORDS(SIZE_IN_WORDS),
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
+		) mesifRam(
+			.memoryInterface(mesifRamMemoryInterface),
+			.clock(mesifTestInterface.clock)
+		);
+	//MESIF_END
+
+	//MOESI_BEGIN
+		TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) moesiTestInterface();
+
+		always #5 moesiTestInterface.clock = ~moesiTestInterface.clock;
+
+		MemoryInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH)
+		) moesiMemoryInterface[NUMBER_OF_DEVICES]();
+
+		MemoryInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH)
+		) moesiRamMemoryInterface();
+
+		generate
+			for (i = 0; i < NUMBER_OF_DEVICES; i++) begin
+				assign moesiMemoryInterface[i].address      = moesiTestInterface.dutInterface[i].memoryInterface.address;
+				assign moesiMemoryInterface[i].dataOut      = moesiTestInterface.dutInterface[i].memoryInterface.dataOut;
+				assign moesiMemoryInterface[i].readEnabled  = moesiTestInterface.dutInterface[i].memoryInterface.readEnabled;
+				assign moesiMemoryInterface[i].writeEnabled = moesiTestInterface.dutInterface[i].memoryInterface.writeEnabled;
+
+				assign moesiTestInterface.dutInterface[i].memoryInterface.dataIn           = moesiMemoryInterface[i].dataIn;
+				assign moesiTestInterface.dutInterface[i].memoryInterface.functionComplete = moesiMemoryInterface[i].functionComplete;
+			end
+		endgenerate
+
+		MOESICacheSystem#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.TAG_WIDTH(TAG_WIDTH),
+			.INDEX_WIDTH(INDEX_WIDTH),
+			.OFFSET_WIDTH(OFFSET_WIDTH),
+			.SET_ASSOCIATIVITY(SET_ASSOCIATIVITY),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		) moesiCacheSystem(
+			.deviceMemoryInterface(moesiMemoryInterface),
+			.ramMemoryInterface(moesiRamMemoryInterface),
+			.clock(moesiTestInterface.clock),
+			.reset(moesiTestInterface.reset)
+		);
+
+		//ram memory
+		RAM#(
+			.DATA_WIDTH(DATA_WIDTH),
+			.SIZE_IN_WORDS(SIZE_IN_WORDS),
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
+		) moesiRam(
+			.memoryInterface(moesiRamMemoryInterface),
+			.clock(moesiTestInterface.clock)
+		);
+	//MOESI_END
 
 	//MOESIF_BEGIN
 		TestInterface#(
@@ -222,7 +341,8 @@ module TestBench();
 		RAM#(
 			.DATA_WIDTH(DATA_WIDTH),
 			.SIZE_IN_WORDS(SIZE_IN_WORDS),
-			.DELAY(RAM_DELAY)
+			.DELAY(RAM_DELAY),
+			.IS_TEST(IS_TEST)
 		) moesifRam(
 			.memoryInterface(moesifRamMemoryInterface),
 			.clock(moesifTestInterface.clock)
@@ -240,13 +360,25 @@ module TestBench();
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-		))::set(uvm_root::get(), "*", WBI, writeBackInvalidateTestInterface);
+		))::set(uvm_root::get(), "*", MSI, msiTestInterface);
 
 		uvm_config_db#(virtual TestInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.DATA_WIDTH(DATA_WIDTH),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
 		))::set(uvm_root::get(), "*", MESI, mesiTestInterface);
+
+		uvm_config_db#(virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		))::set(uvm_root::get(), "*", MESIF, mesifTestInterface);
+
+		uvm_config_db#(virtual TestInterface#(
+			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.DATA_WIDTH(DATA_WIDTH),
+			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
+		))::set(uvm_root::get(), "*", MOESI, moesiTestInterface);
 
 		uvm_config_db#(virtual TestInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),

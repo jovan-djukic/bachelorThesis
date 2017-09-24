@@ -2,35 +2,21 @@ package testPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 
-	localparam ADDRESS_WIDTH       = 16;
-	localparam DATA_WIDTH          = 16;
-	localparam TAG_WIDTH           = 8;
-	localparam INDEX_WIDTH         = 4;
-	localparam OFFSET_WIDTH        = 4;
-	localparam SET_ASSOCIATIVITY   = 2;
+	localparam ADDRESS_WIDTH       = 8;
+	localparam DATA_WIDTH          = 8;
+	localparam TAG_WIDTH           = 4;
+	localparam INDEX_WIDTH         = 2;
+	localparam OFFSET_WIDTH        = 2;
+	localparam SET_ASSOCIATIVITY   = 1;
 	localparam NUMBER_OF_DEVICES   = 4;
 	localparam DEVICE_NUMBER_WIDTH = $clog2(NUMBER_OF_DEVICES);
-	localparam IS_TEST  					 = 1;
-	localparam RAM_DELAY           = 8;
+	localparam RAM_DELAY           = 4;
+	localparam SEQUENCE_ITEM_COUNT = 400;
+	localparam IS_TEST						 = 1;
+	localparam TEST_INTERFACE      = "TestInterface";
 
-	localparam NUMBER_OF_BLOCKS = 50;
-	localparam BLOCK_SIZE       = 1 << OFFSET_WIDTH;
-	localparam SIZE_IN_WORDS    = (BLOCK_SIZE) * NUMBER_OF_BLOCKS;
-
-	localparam SEQUENCE_ITEM_COUNT_MULTIPLIER = 250;
-	localparam SEQUENCE_ITEM_COUNT            = SEQUENCE_ITEM_COUNT_MULTIPLIER * BLOCK_SIZE;
-
-	localparam MIN_ADJACENT_ADDRESSES = BLOCK_SIZE / 10;
-	localparam MAX_ADJACENT_ADDRESSES =  2 * BLOCK_SIZE;
-	localparam MIN_NUMBER_OF_REPETITIONS = 1;
-	localparam MAX_NUMBER_OF_REPETITIONS = SEQUENCE_ITEM_COUNT;
-	 
-	localparam BASIC  = "BASIC";
-	localparam MSI    = "MSI";
-	localparam MESI   = "MESI";
-	localparam MESIF  = "MESIF";
-	localparam MOESI  = "MOESI";
-	localparam MOESIF = "MOESIF";
+	localparam NUMBER_OF_BLOCKS = 64;
+	localparam SIZE_IN_WORDS    = (1 << OFFSET_WIDTH) * NUMBER_OF_BLOCKS;
 
 	//memory sequence item
 	class MemorySequenceItem extends uvm_sequence_item;
@@ -56,54 +42,25 @@ package testPackage;
 	endclass : MemorySequenceItem
 
 	//memory write read sequence
-	class MemoryCPUSequence extends uvm_sequence#(MemorySequenceItem);
-		bit[ADDRESS_WIDTH - 1 : 0] address[SEQUENCE_ITEM_COUNT];
-		bit[DATA_WIDTH - 1    : 0] data[SEQUENCE_ITEM_COUNT];
-		bit 											 isRead[SEQUENCE_ITEM_COUNT];
+	class MemoryRandomSequence extends uvm_sequence#(MemorySequenceItem);
+		`uvm_object_utils(MemoryRandomSequence)
 
-		`uvm_object_utils_begin(MemoryCPUSequence)
-			`uvm_field_sarray_int(address, UVM_ALL_ON)
-			`uvm_field_sarray_int(data, UVM_ALL_ON)
-			`uvm_field_sarray_int(isRead, UVM_ALL_ON)
-		`uvm_object_utils_end
-
-		function new(string name = "MemoryCPUSequence");
+		function new(string name = "MemoryRandomSequence");
 			super.new(name);
 		endfunction : new
-
-		virtual function void myRandomize();
-			int fillCount = 0;
-			while (fillCount < SEQUENCE_ITEM_COUNT) begin
-				bit[ADDRESS_WIDTH - 1 : 0] address         = $urandom_range(SIZE_IN_WORDS - 1, 0);
-				bit[DATA_WIDTH - 1    : 0] data            = $urandom();
-				bit 											 isRead          = $urandom();
-				int 											 adjacentCount   = $urandom_range(MAX_ADJACENT_ADDRESSES, MIN_ADJACENT_ADDRESSES);
-				int												 repetitionCount = $urandom_range(MAX_NUMBER_OF_REPETITIONS, MIN_NUMBER_OF_REPETITIONS);
-
-				for (int i = 0; i < repetitionCount && fillCount < SEQUENCE_ITEM_COUNT; i++) begin
-					for (int j = 0; j < adjacentCount && fillCount < SEQUENCE_ITEM_COUNT; j++, fillCount++) begin
-						this.address[fillCount] = (address + j) % SIZE_IN_WORDS;
-						this.data[fillCount]    = data;
-						this.isRead[fillCount]  = isRead;
-					end
-				end
-			end
-		endfunction : myRandomize
 
 		task body();
 			MemorySequenceItem memorySequenceItem;
 
-			for (int i = 0; i < SEQUENCE_ITEM_COUNT; i++) begin
+			repeat (SEQUENCE_ITEM_COUNT) begin
 				memorySequenceItem = MemorySequenceItem::type_id::create(.name("memorySequenceItem"));
 				
 				start_item(memorySequenceItem);
-					memorySequenceItem.address = this.address[i];
-					memorySequenceItem.data    = this.data[i];
-					memorySequenceItem.isRead  = this.isRead[i];
+					memorySequenceItem.myRandomize();
 				finish_item(memorySequenceItem);	
 			end
 		endtask : body
-	endclass : MemoryCPUSequence
+	endclass : MemoryRandomSequence
 
 	typedef uvm_sequencer#(MemorySequenceItem) MemorySequencer;
 
@@ -139,8 +96,8 @@ package testPackage;
 		virtual task resetDUT();
 			wait (dutInterface.reset == 1);
 			wait (dutInterface.reset == 0);
-			
-			dutInterface.memoryInterface.readEnabled = 0;
+
+			dutInterface.memoryInterface.readEnabled  = 0;
 			dutInterface.memoryInterface.writeEnabled = 0;
 
 			wait (dutInterface.memoryInterface.functionComplete == 0);
@@ -229,8 +186,8 @@ package testPackage;
 		endtask : run_phase
 
 		virtual task resetDUT();
-			wait (dutInterface.reset == 1);
 			wait (dutInterface.reset == 0);
+			wait (dutInterface.reset == 1);
 			wait (dutInterface.memoryInterface.functionComplete == 0);
 		endtask : resetDUT
 			
@@ -376,7 +333,6 @@ package testPackage;
 
 		MemoryAgent agent[NUMBER_OF_DEVICES];
 		MemoryScoreboard scoreboard;
-		string testInterfaceName;
 
 		virtual TestInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
@@ -409,10 +365,9 @@ package testPackage;
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
 			.DATA_WIDTH(DATA_WIDTH),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-		) testInterface, string testInterfaceName);
+		) testInterface);
 	
-			this.testInterface     = testInterface;
-			this.testInterfaceName = testInterfaceName;
+			this.testInterface = testInterface;
 
 			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
 				agent[i].setDUTInterface(.dutInterface(testInterface.dutInterface[i]));
@@ -432,7 +387,7 @@ package testPackage;
 		virtual function void report_phase(uvm_phase phase);
 			super.report_phase(.phase(phase));
 
-			`uvm_info(testInterfaceName, $sformatf("NUMBER OF CLOCKS IS %d", testInterface.clockCounter), UVM_LOW)
+			`uvm_info("PERFORMANCE", $sformatf("NUMBER OF CLOCKS IS %d", testInterface.clockCounter), UVM_LOW)
 		endfunction : report_phase
 	endclass : MemoryEnvironment
 
@@ -440,13 +395,13 @@ package testPackage;
 	class MemoryTest extends uvm_test;
 		`uvm_component_utils(MemoryTest)
 
-		MemoryEnvironment basicEnvironment, msiEnvironment, mesiEnvironment, mesifEnvironment, moesiEnvironment, moesifEnvironment;
+		MemoryEnvironment environment;
 
 		virtual TestInterface#(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), 
 			.DATA_WIDTH(DATA_WIDTH),
 			.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-		) basicTestInterface, msiTestInterface, mesiTestInterface, mesifTestInterface, moesiTestInterface, moesifTestInterface;
+		) testInterface;
 
 		function new(string name = "MemoryTest", uvm_component parent);
 			super.new(.name(name), .parent(parent));
@@ -459,67 +414,17 @@ package testPackage;
 																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
 																		.DATA_WIDTH(DATA_WIDTH),
 																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", BASIC, basicTestInterface)) begin
+																	))::get(this, "", TEST_INTERFACE, testInterface)) begin
 				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
 			end
 
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", MSI, msiTestInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", MESI, mesiTestInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", MESIF, mesifTestInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", MOESI, moesiTestInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-
-			if (!uvm_config_db#(virtual TestInterface#(
-																		.ADDRESS_WIDTH(ADDRESS_WIDTH), 
-																		.DATA_WIDTH(DATA_WIDTH),
-																		.NUMBER_OF_DEVICES(NUMBER_OF_DEVICES)
-																	))::get(this, "", MOESIF, moesifTestInterface)) begin
-				`uvm_fatal("NO VIRTUAL INTERFACE", {"virtual interface must be set for: ", get_full_name(), ".vif"});
-			end
-
-			basicEnvironment  = MemoryEnvironment::type_id::create(.name("basicEnvironment"), .parent(this));
-			msiEnvironment    = MemoryEnvironment::type_id::create(.name("msiEnvironment"), .parent(this));
-			mesiEnvironment   = MemoryEnvironment::type_id::create(.name("mesiEnvironment"), .parent(this));
-			mesifEnvironment  = MemoryEnvironment::type_id::create(.name("mesifEnvironment"), .parent(this));
-			moesiEnvironment  = MemoryEnvironment::type_id::create(.name("moesiEnvironment"), .parent(this));
-			moesifEnvironment = MemoryEnvironment::type_id::create(.name("moesifEnvironment"), .parent(this));
+			environment = MemoryEnvironment::type_id::create(.name("environment"), .parent(this));
 		endfunction : build_phase
 
 		virtual function void connect_phase(uvm_phase phase);
 			super.connect_phase(.phase(phase));
 
-			basicEnvironment.setTestInterface(.testInterface(basicTestInterface), .testInterfaceName(BASIC));
-			msiEnvironment.setTestInterface(.testInterface(msiTestInterface), .testInterfaceName(MSI));
-			mesiEnvironment.setTestInterface(.testInterface(mesiTestInterface), .testInterfaceName(MESI));
-			mesifEnvironment.setTestInterface(.testInterface(mesifTestInterface), .testInterfaceName(MESIF));
-			moesiEnvironment.setTestInterface(.testInterface(moesiTestInterface), .testInterfaceName(MOESI));
-			moesifEnvironment.setTestInterface(.testInterface(moesifTestInterface), .testInterfaceName(MOESIF));
+			environment.setTestInterface(.testInterface(testInterface));
 		endfunction : connect_phase
 		
 		virtual function void end_of_elaboration_phase(uvm_phase phase);
@@ -530,88 +435,23 @@ package testPackage;
 		endfunction : end_of_elaboration_phase
 
 		virtual task run_phase(uvm_phase phase);
-			MemoryCPUSequence memoryCPUSequence[NUMBER_OF_DEVICES];
+			MemoryRandomSequence memoryRandomSequence[NUMBER_OF_DEVICES];
 
 			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
-				memoryCPUSequence[i] = MemoryCPUSequence::type_id::create(.name("memoryCPUSequence"));
-				memoryCPUSequence[i].myRandomize();
+				memoryRandomSequence[i] = MemoryRandomSequence::type_id::create(.name("memoryRandomSequence"));
 			end
 
-			basicTestInterface.testDone  = 1;
-			msiTestInterface.testDone    = 1;
-			mesiTestInterface.testDone   = 1;
-			mesifTestInterface.testDone  = 1;
-			moesiTestInterface.testDone  = 1;
-			moesifTestInterface.testDone = 1;
-
+			testInterface.testDone = 1;
 			phase.raise_objection(.obj(this));
-				`uvm_info(BASIC, "TEST START", UVM_LOW)
-				basicTestInterface.testDone = 0;
+				testInterface.testDone = 0;
 				fork
-					memoryCPUSequence[0].start(basicEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(basicEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(basicEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(basicEnvironment.agent[3].sequencer);
+					memoryRandomSequence[0].start(environment.agent[0].sequencer);
+					memoryRandomSequence[1].start(environment.agent[1].sequencer);
+					memoryRandomSequence[2].start(environment.agent[2].sequencer);
+					memoryRandomSequence[3].start(environment.agent[3].sequencer);
 				join
-				basicTestInterface.testDone = 1;
-				`uvm_info(BASIC, "TEST END", UVM_LOW)
-
-				`uvm_info(MSI, "TEST START", UVM_LOW)
-				msiTestInterface.testDone = 0;
-				fork
-					memoryCPUSequence[0].start(msiEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(msiEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(msiEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(msiEnvironment.agent[3].sequencer);
-				join
-				msiTestInterface.testDone = 1;
-				`uvm_info(MSI, "TEST END", UVM_LOW)
-
-				`uvm_info(MESI, "TEST START", UVM_LOW)
-				mesiTestInterface.testDone = 0;
-				fork
-					memoryCPUSequence[0].start(mesiEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(mesiEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(mesiEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(mesiEnvironment.agent[3].sequencer);
-				join
-				mesiTestInterface.testDone = 1;
-				`uvm_info(MESI, "TEST END", UVM_LOW)
-
-				`uvm_info(MESIF, "TEST START", UVM_LOW)
-				mesifTestInterface.testDone = 0;
-				fork
-					memoryCPUSequence[0].start(mesifEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(mesifEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(mesifEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(mesifEnvironment.agent[3].sequencer);
-				join
-				mesifTestInterface.testDone = 1;
-				`uvm_info(MESIF, "TEST END", UVM_LOW)
-
-				`uvm_info(MOESI, "TEST START", UVM_LOW)
-				moesiTestInterface.testDone = 0;
-				fork
-					memoryCPUSequence[0].start(moesiEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(moesiEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(moesiEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(moesiEnvironment.agent[3].sequencer);
-				join
-				moesiTestInterface.testDone = 1;
-				`uvm_info(MOESI, "TEST END", UVM_LOW)
-
-				`uvm_info(MOESIF, "TEST START", UVM_LOW)
-				moesifTestInterface.testDone = 0;
-				fork
-					memoryCPUSequence[0].start(moesifEnvironment.agent[0].sequencer);
-					memoryCPUSequence[1].start(moesifEnvironment.agent[1].sequencer);
-					memoryCPUSequence[2].start(moesifEnvironment.agent[2].sequencer);
-					memoryCPUSequence[3].start(moesifEnvironment.agent[3].sequencer);
-				join
-				moesifTestInterface.testDone = 1;
-				`uvm_info(MOESIF, "TEST END", UVM_LOW)
+				testInterface.testDone = 1;
 			phase.drop_objection(.obj(this));
-
 		endtask : run_phase
 	endclass : MemoryTest
 endpackage : testPackage
