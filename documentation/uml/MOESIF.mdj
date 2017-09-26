@@ -13002,7 +13002,7 @@
 									},
 									"edgePosition": 1,
 									"underline": false,
-									"text": "read && shared && owned / BUS_READ",
+									"text": "read && owned / BUS_READ",
 									"horizontalAlignment": 2,
 									"verticalAlignment": 5,
 									"wordWrap": false
@@ -22134,7 +22134,7 @@
 									"_parent": {
 										"$ref": "AAAAAAFekei6aYgq99o="
 									},
-									"name": "read && shared && owned",
+									"name": "read && owned",
 									"visibility": "public",
 									"kind": "anyReceive"
 								}

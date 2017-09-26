@@ -2,12 +2,12 @@ package testPackage;
 	import uvm_pkg::*;
 	`include "uvm_macros.svh"
 
-	localparam ADDRESS_WIDTH       = 16;
-	localparam DATA_WIDTH          = 16;
-	localparam TAG_WIDTH           = 8;
-	localparam INDEX_WIDTH         = 4;
-	localparam OFFSET_WIDTH        = 4;
-	localparam SET_ASSOCIATIVITY   = 2;
+	localparam ADDRESS_WIDTH       = 8;
+	localparam DATA_WIDTH          = 8;
+	localparam TAG_WIDTH           = 4;
+	localparam INDEX_WIDTH         = 2;
+	localparam OFFSET_WIDTH        = 2;
+	localparam SET_ASSOCIATIVITY   = 1;
 	localparam NUMBER_OF_DEVICES   = 4;
 	localparam DEVICE_NUMBER_WIDTH = $clog2(NUMBER_OF_DEVICES);
 	localparam IS_TEST  					 = 1;
@@ -17,7 +17,7 @@ package testPackage;
 	localparam BLOCK_SIZE       = 1 << OFFSET_WIDTH;
 	localparam SIZE_IN_WORDS    = (BLOCK_SIZE) * NUMBER_OF_BLOCKS;
 
-	localparam SEQUENCE_ITEM_COUNT_MULTIPLIER = 250;
+	localparam SEQUENCE_ITEM_COUNT_MULTIPLIER = 25;
 	localparam SEQUENCE_ITEM_COUNT            = SEQUENCE_ITEM_COUNT_MULTIPLIER * BLOCK_SIZE;
 
 	localparam MIN_ADJACENT_ADDRESSES = BLOCK_SIZE / 10;
@@ -31,6 +31,9 @@ package testPackage;
 	localparam MESIF  = "MESIF";
 	localparam MOESI  = "MOESI";
 	localparam MOESIF = "MOESIF";
+
+	localparam RANDOM_SEED_DEFINED = 0;
+	localparam RANDOM_SEED         = 2;
 
 	//memory sequence item
 	class MemorySequenceItem extends uvm_sequence_item;
@@ -73,6 +76,7 @@ package testPackage;
 
 		virtual function void myRandomize();
 			int fillCount = 0;
+
 			while (fillCount < SEQUENCE_ITEM_COUNT) begin
 				bit[ADDRESS_WIDTH - 1 : 0] address         = $urandom_range(SIZE_IN_WORDS - 1, 0);
 				bit[DATA_WIDTH - 1    : 0] data            = $urandom();
@@ -531,6 +535,11 @@ package testPackage;
 
 		virtual task run_phase(uvm_phase phase);
 			MemoryCPUSequence memoryCPUSequence[NUMBER_OF_DEVICES];
+
+			if (RANDOM_SEED_DEFINED) begin
+				`uvm_info("SEEDING", "", UVM_LOW)
+				$urandom(RANDOM_SEED);
+			end
 
 			for (int i = 0; i < NUMBER_OF_DEVICES; i++) begin
 				memoryCPUSequence[i] = MemoryCPUSequence::type_id::create(.name("memoryCPUSequence"));
